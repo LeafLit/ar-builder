@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createRuleEngine } from "../authoring/ruleEngine";
 import type { Asset, StateBinding } from "../projects/projectTypes";
+import {
+  createSequenceRecognizer,
+  type RecognitionSession,
+  type StateRecognizer
+} from "./stateRecognizer";
 
 type TestState = {
   id: string;
@@ -15,13 +20,60 @@ const TEST_STATES: TestState[] = [
 export function TestScreen(props: {
   assets: Asset[];
   bindings: StateBinding[];
+  recognizer?: StateRecognizer;
   onBackHome: () => void;
 }) {
+  const recognizer = useMemo(
+    () => props.recognizer ?? createSequenceRecognizer(TEST_STATES.map((state) => state.id)),
+    [props.recognizer]
+  );
+  const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
+  const [confidence, setConfidence] = useState<number | undefined>();
+  const [recognitionActive, setRecognitionActive] = useState(false);
   const output = detectedState
     ? resolveTextOutput(detectedState, props.assets, props.bindings)
     : undefined;
   const previewContent = output?.content ?? "等待 AR 输出。";
+  const statusText = detectedState
+    ? `当前识别：${detectedState.name}${formatConfidence(confidence)}`
+    : recognitionActive
+      ? "自动识别中，等待结果。"
+      : "等待识别状态。";
+
+  useEffect(() => {
+    return () => {
+      sessionRef.current?.stop();
+    };
+  }, []);
+
+  async function startAutomaticRecognition() {
+    if (recognitionActive) {
+      return;
+    }
+
+    const session = await recognizer.start((prediction) => {
+      const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
+        id: prediction.stateId,
+        name: prediction.stateId
+      };
+      setDetectedState(nextState);
+      setConfidence(prediction.confidence);
+    });
+    sessionRef.current = session;
+    setRecognitionActive(true);
+  }
+
+  function stopAutomaticRecognition() {
+    sessionRef.current?.stop();
+    sessionRef.current = undefined;
+    setRecognitionActive(false);
+  }
+
+  function manuallyDetect(state: TestState) {
+    setDetectedState(state);
+    setConfidence(undefined);
+  }
 
   return (
     <div className="stack">
@@ -44,7 +96,7 @@ export function TestScreen(props: {
           <button
             className="state-button"
             key={state.id}
-            onClick={() => setDetectedState(state)}
+            onClick={() => manuallyDetect(state)}
             type="button"
           >
             模拟识别{state.name}
@@ -52,8 +104,27 @@ export function TestScreen(props: {
         ))}
       </div>
 
+      <div className="action-row">
+        <button
+          className="primary-button"
+          disabled={recognitionActive}
+          onClick={startAutomaticRecognition}
+          type="button"
+        >
+          启动自动识别
+        </button>
+        <button
+          className="secondary-button"
+          disabled={!recognitionActive}
+          onClick={stopAutomaticRecognition}
+          type="button"
+        >
+          停止自动识别
+        </button>
+      </div>
+
       <p className="muted" role="status">
-        {detectedState ? `当前识别：${detectedState.name}` : "等待识别状态。"}
+        {statusText}
       </p>
 
       <button className="secondary-button" onClick={props.onBackHome} type="button">
@@ -61,6 +132,14 @@ export function TestScreen(props: {
       </button>
     </div>
   );
+}
+
+function formatConfidence(confidence: number | undefined) {
+  if (confidence === undefined) {
+    return "";
+  }
+
+  return `（${Math.round(confidence * 100)}%）`;
 }
 
 function resolveTextOutput(state: TestState, assets: Asset[], bindings: StateBinding[]) {

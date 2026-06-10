@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Asset, StateBinding } from "../projects/projectTypes";
 import { TestScreen } from "./TestScreen";
+import type { RecognitionListener, StateRecognizer } from "./stateRecognizer";
 
 const assets: Asset[] = [
   {
@@ -66,5 +67,41 @@ describe("TestScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 B" }));
 
     expect(screen.getByText("未找到状态 B 的输出绑定。")).toBeInTheDocument();
+  });
+
+  it("updates the AR output from an automatic recognizer result", async () => {
+    let emitResult: RecognitionListener = () => undefined;
+    const stop = vi.fn();
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async (onResult) => {
+        emitResult = onResult;
+        return { stop };
+      })
+    };
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(recognizer.start).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_b", confidence: 0.82 });
+    });
+
+    expect(screen.getByText("状态 B 的 AR 输出")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 B（82%）");
+
+    fireEvent.click(screen.getByRole("button", { name: "停止自动识别" }));
+    expect(stop).toHaveBeenCalledTimes(1);
   });
 });
