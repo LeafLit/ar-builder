@@ -1,6 +1,7 @@
 import { useReducer } from "react";
 import { appReducer, initialAppState } from "./appState";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
+import { TrainScreen } from "../features/ml/TrainScreen";
 
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
@@ -33,12 +34,7 @@ export function App() {
         )}
 
         {state.screen === "train" && (
-          <WorkflowPanel
-            title="训练识别模型"
-            description="App 会用这些样本训练一个轻量识别器，并显示当前识别状态。"
-            action="下一步：编辑"
-            onNext={() => dispatch({ type: "goTo", screen: "author" })}
-          />
+          <TrainScreen onNext={() => dispatch({ type: "goTo", screen: "author" })} />
         )}
 
         {state.screen === "author" && (

@@ -126,6 +126,15 @@ textarea {
   background: #ccfbf1;
 }
 
+.state-summary {
+  min-height: 48px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
 .action-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
