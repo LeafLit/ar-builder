@@ -138,4 +138,44 @@ describe("TestScreen", () => {
     });
     expect(recognizer.start).toHaveBeenCalledTimes(1);
   });
+
+  it("shows startup and failure states when automatic recognition cannot start", async () => {
+    let rejectStart: (error: Error) => void = () => undefined;
+    const recognizer: StateRecognizer = {
+      start: vi.fn(
+        () =>
+          new Promise<never>((_, reject) => {
+            rejectStart = reject;
+          })
+      )
+    };
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "正在启动相机识别，请确认浏览器权限。"
+    );
+    expect(screen.getByRole("button", { name: "启动自动识别" })).toBeDisabled();
+
+    act(() => {
+      rejectStart(new Error("permission denied"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "自动识别启动失败，请检查相机权限或模型是否已加载。"
+      );
+    });
+    expect(screen.getByRole("button", { name: "启动自动识别" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "停止自动识别" })).toBeDisabled();
+  });
 });

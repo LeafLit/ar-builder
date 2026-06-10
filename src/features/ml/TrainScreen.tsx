@@ -14,6 +14,11 @@ export type ModelTrainer = {
   train(projectId: string): Promise<TrainingResult>;
 };
 
+const STATE_LABELS: Record<string, string> = {
+  state_a: "状态 A",
+  state_b: "状态 B"
+};
+
 function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTrainer {
   return {
     async train() {
@@ -23,6 +28,19 @@ function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTraine
       };
     }
   };
+}
+
+function createTrainingRequirementMessage(sampleCounts: Record<string, number>) {
+  const entries = Object.entries(sampleCounts);
+  const missingStates = entries
+    .filter(([, count]) => count <= 0)
+    .map(([stateId]) => STATE_LABELS[stateId] ?? stateId);
+
+  if (missingStates.length > 0) {
+    return `真实训练需要每个状态至少 1 个样本。当前缺少：${missingStates.join("、")}。`;
+  }
+
+  return `已满足真实训练条件：${entries.length} 个状态都有样本。`;
 }
 
 export function TrainScreen(props: {
@@ -35,6 +53,7 @@ export function TrainScreen(props: {
   const projectId = props.projectId ?? "local_project";
   const sampleCounts = props.sampleCounts ?? { state_a: 0, state_b: 0 };
   const trainer = props.trainer ?? createDefaultTrainer(sampleCounts);
+  const trainingRequirementMessage = createTrainingRequirementMessage(sampleCounts);
   const [status, setStatus] = useState("准备好后点击开始训练。");
   const [isTraining, setIsTraining] = useState(false);
   const [trained, setTrained] = useState(false);
@@ -69,6 +88,7 @@ export function TrainScreen(props: {
           <div className="state-summary">状态 A：{sampleCounts.state_a ?? 0} 个样本</div>
           <div className="state-summary">状态 B：{sampleCounts.state_b ?? 0} 个样本</div>
         </div>
+        <p className="training-hint">{trainingRequirementMessage}</p>
         <p className="muted" role="status">
           {status}
         </p>

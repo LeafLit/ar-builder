@@ -14,6 +14,8 @@ type TestState = {
   name: string;
 };
 
+type RecognitionPhase = "idle" | "starting" | "running" | "failed";
+
 const TEST_STATES: TestState[] = [
   { id: "state_a", name: "状态 A" },
   { id: "state_b", name: "状态 B" }
@@ -40,16 +42,18 @@ export function TestScreen(props: {
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
-  const [recognitionActive, setRecognitionActive] = useState(false);
+  const [recognitionPhase, setRecognitionPhase] = useState<RecognitionPhase>("idle");
+  const recognitionStartingOrRunning =
+    recognitionPhase === "starting" || recognitionPhase === "running";
   const output = detectedState
     ? resolveTextOutput(detectedState, props.assets, props.bindings)
     : undefined;
   const previewContent = output?.content ?? "等待 AR 输出。";
-  const statusText = detectedState
-    ? `当前识别：${detectedState.name}${formatConfidence(confidence)}`
-    : recognitionActive
-      ? "自动识别中，等待结果。"
-      : "等待识别状态。";
+  const statusText = createStatusText({
+    confidence,
+    detectedState,
+    recognitionPhase
+  });
 
   useEffect(() => {
     return () => {
@@ -58,35 +62,45 @@ export function TestScreen(props: {
   }, []);
 
   async function startAutomaticRecognition() {
-    if (recognitionActive) {
+    if (recognitionStartingOrRunning) {
       return;
     }
 
-    const recognizer = createActiveRecognizer({
-      cameraRecognizerFactory: props.createCameraRecognizer,
-      model: props.recognitionModel,
-      sequenceRecognizer,
-      video: videoRef.current
-    });
-    const session = await recognizer.start((prediction) => {
-      const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
-        id: prediction.stateId,
-        name: prediction.stateId
-      };
-      setDetectedState(nextState);
-      setConfidence(prediction.confidence);
-    });
-    sessionRef.current = session;
-    setRecognitionActive(true);
+    setRecognitionPhase("starting");
+
+    try {
+      const recognizer = createActiveRecognizer({
+        cameraRecognizerFactory: props.createCameraRecognizer,
+        model: props.recognitionModel,
+        sequenceRecognizer,
+        video: videoRef.current
+      });
+      const session = await recognizer.start((prediction) => {
+        const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
+          id: prediction.stateId,
+          name: prediction.stateId
+        };
+        setDetectedState(nextState);
+        setConfidence(prediction.confidence);
+      });
+      sessionRef.current = session;
+      setRecognitionPhase("running");
+    } catch {
+      sessionRef.current = undefined;
+      setRecognitionPhase("failed");
+    }
   }
 
   function stopAutomaticRecognition() {
     sessionRef.current?.stop();
     sessionRef.current = undefined;
-    setRecognitionActive(false);
+    setRecognitionPhase("idle");
   }
 
   function manuallyDetect(state: TestState) {
+    sessionRef.current?.stop();
+    sessionRef.current = undefined;
+    setRecognitionPhase("idle");
     setDetectedState(state);
     setConfidence(undefined);
   }
@@ -130,7 +144,7 @@ export function TestScreen(props: {
       <div className="action-row">
         <button
           className="primary-button"
-          disabled={recognitionActive}
+          disabled={recognitionStartingOrRunning}
           onClick={startAutomaticRecognition}
           type="button"
         >
@@ -138,7 +152,7 @@ export function TestScreen(props: {
         </button>
         <button
           className="secondary-button"
-          disabled={!recognitionActive}
+          disabled={recognitionPhase !== "running"}
           onClick={stopAutomaticRecognition}
           type="button"
         >
@@ -155,6 +169,30 @@ export function TestScreen(props: {
       </button>
     </div>
   );
+}
+
+function createStatusText(input: {
+  confidence: number | undefined;
+  detectedState: TestState | undefined;
+  recognitionPhase: RecognitionPhase;
+}) {
+  if (input.recognitionPhase === "starting") {
+    return "正在启动相机识别，请确认浏览器权限。";
+  }
+
+  if (input.recognitionPhase === "failed") {
+    return "自动识别启动失败，请检查相机权限或模型是否已加载。";
+  }
+
+  if (input.detectedState) {
+    return `当前识别：${input.detectedState.name}${formatConfidence(input.confidence)}`;
+  }
+
+  if (input.recognitionPhase === "running") {
+    return "自动识别中，等待结果。";
+  }
+
+  return "等待识别状态。";
 }
 
 function createActiveRecognizer(input: {

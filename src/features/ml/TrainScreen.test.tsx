@@ -70,6 +70,32 @@ describe("TrainScreen", () => {
     });
   });
 
+  it("shows which states still need samples for real training", () => {
+    render(
+      <TrainScreen
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 2, state_b: 0 }}
+      />
+    );
+
+    expect(
+      screen.getByText("真实训练需要每个状态至少 1 个样本。当前缺少：状态 B。")
+    ).toBeInTheDocument();
+  });
+
+  it("confirms when every state has enough samples for real training", () => {
+    render(
+      <TrainScreen
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 1, state_b: 1 }}
+      />
+    );
+
+    expect(screen.getByText("已满足真实训练条件：2 个状态都有样本。")).toBeInTheDocument();
+  });
+
   it("uses captured sample counts when no custom trainer is provided", async () => {
     render(
       <TrainScreen

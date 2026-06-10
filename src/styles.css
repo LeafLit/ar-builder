@@ -135,6 +135,14 @@ textarea {
   background: #f8fafc;
 }
 
+.training-hint {
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #0f172a;
+  background: #f0f9ff;
+}
+
 .binding-list {
   display: grid;
   gap: 10px;
