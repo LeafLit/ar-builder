@@ -17,6 +17,7 @@ export type Asset = {
   id: string;
   type: AssetType;
   name: string;
+  content?: string;
   localBlobKey?: string;
   url?: string;
 };

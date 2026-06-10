@@ -135,6 +135,39 @@ textarea {
   background: #f8fafc;
 }
 
+.binding-list {
+  display: grid;
+  gap: 10px;
+}
+
+.binding-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.binding-card span {
+  font-weight: 700;
+}
+
+.binding-card textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.binding-card textarea:focus {
+  border-color: #0f766e;
+  outline: 3px solid #ccfbf1;
+}
+
 .action-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import { appReducer, initialAppState } from "./appState";
+import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
 import { TrainScreen } from "../features/ml/TrainScreen";
 
@@ -48,10 +49,10 @@ export function App() {
         )}
 
         {state.screen === "author" && (
-          <WorkflowPanel
-            title="编辑 AR 输出"
-            description="为每个状态绑定文字、图片、3D 模型或音频。"
-            action="下一步：测试"
+          <AuthoringScreen
+            assets={state.assets}
+            bindings={state.bindings}
+            onSaveTextOutputs={(outputs) => dispatch({ type: "saveTextOutputs", outputs })}
             onNext={() => dispatch({ type: "goTo", screen: "test" })}
           />
         )}

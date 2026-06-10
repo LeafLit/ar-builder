@@ -27,6 +27,14 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "下一步：编辑" }));
     expect(screen.getByText("编辑 AR 输出")).toBeInTheDocument();
 
+    fireEvent.change(screen.getByLabelText("状态 A 的 AR 文字"), {
+      target: { value: "状态 A 的提示" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "状态 B 的提示" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
     fireEvent.click(screen.getByRole("button", { name: "下一步：测试" }));
     expect(screen.getByText("实时测试")).toBeInTheDocument();
   });
