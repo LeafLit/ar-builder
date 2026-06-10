@@ -168,6 +168,42 @@ textarea {
   outline: 3px solid #ccfbf1;
 }
 
+.ar-test-stage {
+  min-height: 320px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.18), transparent 42%),
+    #0f172a;
+}
+
+.ar-test-camera {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+}
+
+.ar-test-overlay {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 22px;
+  min-height: 56px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.76);
+  backdrop-filter: blur(8px);
+}
+
 .action-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

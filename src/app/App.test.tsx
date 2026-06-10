@@ -37,5 +37,8 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "下一步：测试" }));
     expect(screen.getByText("实时测试")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+    expect(screen.getByText("状态 A 的提示")).toBeInTheDocument();
   });
 });

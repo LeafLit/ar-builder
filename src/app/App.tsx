@@ -3,6 +3,7 @@ import { appReducer, initialAppState } from "./appState";
 import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
 import { TrainScreen } from "../features/ml/TrainScreen";
+import { TestScreen } from "../features/testing/TestScreen";
 
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
@@ -58,31 +59,13 @@ export function App() {
         )}
 
         {state.screen === "test" && (
-          <WorkflowPanel
-            title="实时测试"
-            description="把摄像头识别结果和 AR 输出连接起来，直接在手机上验证。"
-            action="返回首页"
-            onNext={() => dispatch({ type: "goTo", screen: "home" })}
+          <TestScreen
+            assets={state.assets}
+            bindings={state.bindings}
+            onBackHome={() => dispatch({ type: "goTo", screen: "home" })}
           />
         )}
       </section>
     </main>
-  );
-}
-
-function WorkflowPanel(props: {
-  title: string;
-  description: string;
-  action: string;
-  onNext: () => void;
-}) {
-  return (
-    <div className="panel stack">
-      <h1>{props.title}</h1>
-      <p className="muted">{props.description}</p>
-      <button className="primary-button" onClick={props.onNext}>
-        {props.action}
-      </button>
-    </div>
   );
 }
