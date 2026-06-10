@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vite-cache/
+.pnpm-store/
+.superpowers/
+
+*.log
+*.local
+*.tsbuildinfo
+
+3544548.3581449.pdf
