@@ -30,12 +30,14 @@ describe("CaptureScreen", () => {
   it("starts the camera and captures a sample for the selected state", async () => {
     const cameraService = createFakeCameraService();
     const sampleStore = createFakeSampleStore();
+    const onSampleCaptured = vi.fn();
 
     render(
       <CaptureScreen
         cameraService={cameraService}
         sampleStore={sampleStore}
         projectId="project_1"
+        onSampleCaptured={onSampleCaptured}
         onNext={vi.fn()}
       />
     );
@@ -56,17 +58,20 @@ describe("CaptureScreen", () => {
       "state_a",
       expect.any(Blob)
     );
+    expect(onSampleCaptured).toHaveBeenCalledWith("state_a", 1);
   });
 
   it("lets the user choose another state before capture", async () => {
     const cameraService = createFakeCameraService();
     const sampleStore = createFakeSampleStore();
+    const onSampleCaptured = vi.fn();
 
     render(
       <CaptureScreen
         cameraService={cameraService}
         sampleStore={sampleStore}
         projectId="project_1"
+        onSampleCaptured={onSampleCaptured}
         onNext={vi.fn()}
       />
     );
@@ -84,5 +89,6 @@ describe("CaptureScreen", () => {
       "state_b",
       expect.any(Blob)
     );
+    expect(onSampleCaptured).toHaveBeenCalledWith("state_b", 1);
   });
 });

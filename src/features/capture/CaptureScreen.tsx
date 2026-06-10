@@ -16,6 +16,7 @@ export function CaptureScreen(props: {
   projectId?: string;
   cameraService?: CameraService;
   sampleStore?: SampleStore;
+  onSampleCaptured?: (stateId: string, count: number) => void;
   onNext: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -60,6 +61,7 @@ export function CaptureScreen(props: {
         ...current,
         [selectedState.id]: nextCount
       }));
+      props.onSampleCaptured?.(selectedState.id, nextCount);
       setStatus(`已为 ${selectedState.name} 采集 ${nextCount} 个样本。`);
     } catch {
       setStatus("采集样本失败，请重新尝试。");

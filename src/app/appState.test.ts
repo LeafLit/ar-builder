@@ -18,4 +18,15 @@ describe("appReducer", () => {
 
     expect(state.projectId).toBe("project_1");
   });
+
+  it("records captured sample counts by state", () => {
+    const state = appReducer(initialAppState, {
+      type: "recordSample",
+      stateId: "state_a",
+      count: 2
+    });
+
+    expect(state.sampleCounts.state_a).toBe(2);
+    expect(state.sampleCounts.state_b).toBe(0);
+  });
 });

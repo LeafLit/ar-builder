@@ -9,14 +9,16 @@ export type ModelTrainer = {
   train(projectId: string): Promise<TrainingSummary>;
 };
 
-const defaultTrainer: ModelTrainer = {
-  async train() {
-    return {
-      stateCount: 2,
-      exampleCount: 0
-    };
-  }
-};
+function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTrainer {
+  return {
+    async train() {
+      return {
+        stateCount: Object.keys(sampleCounts).length,
+        exampleCount: Object.values(sampleCounts).reduce((total, count) => total + count, 0)
+      };
+    }
+  };
+}
 
 export function TrainScreen(props: {
   projectId?: string;
@@ -26,7 +28,7 @@ export function TrainScreen(props: {
 }) {
   const projectId = props.projectId ?? "local_project";
   const sampleCounts = props.sampleCounts ?? { state_a: 0, state_b: 0 };
-  const trainer = props.trainer ?? defaultTrainer;
+  const trainer = props.trainer ?? createDefaultTrainer(sampleCounts);
   const [status, setStatus] = useState("准备好后点击开始训练。");
   const [isTraining, setIsTraining] = useState(false);
   const [trained, setTrained] = useState(false);

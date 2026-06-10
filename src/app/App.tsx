@@ -30,11 +30,21 @@ export function App() {
         )}
 
         {state.screen === "capture" && (
-          <CaptureScreen onNext={() => dispatch({ type: "goTo", screen: "train" })} />
+          <CaptureScreen
+            projectId={state.projectId}
+            onSampleCaptured={(stateId, count) =>
+              dispatch({ type: "recordSample", stateId, count })
+            }
+            onNext={() => dispatch({ type: "goTo", screen: "train" })}
+          />
         )}
 
         {state.screen === "train" && (
-          <TrainScreen onNext={() => dispatch({ type: "goTo", screen: "author" })} />
+          <TrainScreen
+            projectId={state.projectId}
+            sampleCounts={state.sampleCounts}
+            onNext={() => dispatch({ type: "goTo", screen: "author" })}
+          />
         )}
 
         {state.screen === "author" && (

@@ -39,6 +39,22 @@ describe("TrainScreen", () => {
     expect(trainer.train).toHaveBeenCalledWith("project_1");
   });
 
+  it("uses captured sample counts when no custom trainer is provided", async () => {
+    render(
+      <TrainScreen
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 2, state_b: 1 }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "开始训练" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toContain("3");
+    });
+  });
+
   it("shows a useful error when training fails", async () => {
     const trainer: ModelTrainer = {
       train: vi.fn(async () => {
