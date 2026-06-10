@@ -4,6 +4,8 @@
 
 本文档用于第一版 PWA 真机验证。目标不是一次性覆盖所有原生能力，而是确认手机浏览器版本可以稳定完成：打开 App、安装到桌面、授权相机、采集样本、训练模型、测试 AR 输出。
 
+默认真机测试地址：`https://leaflit.github.io/ar-builder/`
+
 ## 1. 验收目标
 
 本轮通过后，App 应满足以下条件：
@@ -21,9 +23,16 @@
 ### 2.1 部署要求
 
 - 必须使用 HTTPS 域名访问，例如 `https://your-domain.com`。
+- 当前 GitHub Pages 预期地址：`https://leaflit.github.io/ar-builder/`。
 - 本机开发调试可以使用 `localhost`，但手机访问电脑局域网 IP 时不能当作安全上下文。
 - 构建命令：`pnpm.cmd run build`。
 - 预览命令：`pnpm.cmd run preview`。
+
+### 2.1.1 GitHub Pages 发布方式
+
+- 每次推送到 `main` 后，GitHub Actions 会运行测试、构建并发布 `dist`。
+- GitHub Pages 的发布源应设置为 GitHub Actions。
+- GitHub Pages 构建会使用 `/ar-builder/` 子路径，确保 JS、CSS、manifest、图标和 service worker 都能在项目站点下加载。
 
 ### 2.2 手机准备
 
