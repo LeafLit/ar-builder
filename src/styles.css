@@ -54,6 +54,11 @@ textarea {
   background: #0f766e;
 }
 
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .secondary-button {
   min-height: 44px;
   border: 1px solid #cbd5e1;
@@ -83,8 +88,46 @@ textarea {
   min-height: 280px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
+  position: relative;
+  overflow: hidden;
   display: grid;
   place-items: center;
   color: #475569;
   background: #0f172a;
+}
+
+.camera-preview video {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  object-fit: cover;
+}
+
+.camera-preview span {
+  position: absolute;
+}
+
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.state-button {
+  min-height: 48px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.state-button.active {
+  border-color: #0f766e;
+  background: #ccfbf1;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }

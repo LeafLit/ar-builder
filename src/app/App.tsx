@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import { appReducer, initialAppState } from "./appState";
+import { CaptureScreen } from "../features/capture/CaptureScreen";
 
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
@@ -28,12 +29,7 @@ export function App() {
         )}
 
         {state.screen === "capture" && (
-          <WorkflowPanel
-            title="采集训练样本"
-            description="先为每个真实世界状态拍摄几张样本，例如物体在左边和右边。"
-            action="下一步：训练"
-            onNext={() => dispatch({ type: "goTo", screen: "train" })}
-          />
+          <CaptureScreen onNext={() => dispatch({ type: "goTo", screen: "train" })} />
         )}
 
         {state.screen === "train" && (

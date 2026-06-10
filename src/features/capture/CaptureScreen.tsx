@@ -1,0 +1,118 @@
+import { useRef, useState } from "react";
+import { createCameraService, type CameraService } from "./cameraService";
+import { createSampleStore, type SampleStore } from "./sampleStore";
+
+type CaptureState = {
+  id: string;
+  name: string;
+};
+
+const DEFAULT_STATES: CaptureState[] = [
+  { id: "state_a", name: "状态 A" },
+  { id: "state_b", name: "状态 B" }
+];
+
+export function CaptureScreen(props: {
+  projectId?: string;
+  cameraService?: CameraService;
+  sampleStore?: SampleStore;
+  onNext: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const cameraService = props.cameraService ?? createCameraService();
+  const sampleStore = props.sampleStore ?? createSampleStore();
+  const projectId = props.projectId ?? "local_project";
+  const [selectedStateId, setSelectedStateId] = useState(DEFAULT_STATES[0].id);
+  const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({
+    state_a: 0,
+    state_b: 0
+  });
+  const [cameraReady, setCameraReady] = useState(false);
+  const [status, setStatus] = useState("先开启摄像头，然后为每个状态采集样本。");
+
+  const selectedState = DEFAULT_STATES.find((state) => state.id === selectedStateId);
+
+  async function startCamera() {
+    if (!videoRef.current) {
+      return;
+    }
+
+    try {
+      streamRef.current = await cameraService.start(videoRef.current);
+      setCameraReady(true);
+      setStatus("摄像头已开启，可以采集样本。");
+    } catch {
+      setStatus("摄像头开启失败，请检查浏览器权限。");
+    }
+  }
+
+  async function captureSample() {
+    if (!videoRef.current || !selectedState) {
+      return;
+    }
+
+    try {
+      const blob = await cameraService.captureFrame(videoRef.current);
+      await sampleStore.saveSample(projectId, selectedState.id, blob);
+      const nextCount = (sampleCounts[selectedState.id] ?? 0) + 1;
+      setSampleCounts((current) => ({
+        ...current,
+        [selectedState.id]: nextCount
+      }));
+      setStatus(`已为 ${selectedState.name} 采集 ${nextCount} 个样本。`);
+    } catch {
+      setStatus("采集样本失败，请重新尝试。");
+    }
+  }
+
+  return (
+    <div className="stack">
+      <div className="panel stack">
+        <h1>采集训练样本</h1>
+        <p className="muted">对每个真实世界状态拍几张样本，例如物体在左边和右边。</p>
+        <div className="camera-preview">
+          <video ref={videoRef} aria-label="摄像头预览" muted playsInline />
+          {!cameraReady && <span>摄像头预览</span>}
+        </div>
+        <p className="muted" role="status">
+          {status}
+        </p>
+      </div>
+
+      <div className="panel stack">
+        <h2>选择状态</h2>
+        <div className="state-grid">
+          {DEFAULT_STATES.map((state) => (
+            <button
+              className={state.id === selectedStateId ? "state-button active" : "state-button"}
+              key={state.id}
+              onClick={() => setSelectedStateId(state.id)}
+              type="button"
+            >
+              {state.name} {sampleCounts[state.id] ?? 0} 个样本
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="action-row">
+        <button className="secondary-button" onClick={startCamera} type="button">
+          开启摄像头
+        </button>
+        <button
+          className="primary-button"
+          disabled={!cameraReady}
+          onClick={captureSample}
+          type="button"
+        >
+          采集样本
+        </button>
+      </div>
+
+      <button className="primary-button" onClick={props.onNext} type="button">
+        下一步：训练
+      </button>
+    </div>
+  );
+}
