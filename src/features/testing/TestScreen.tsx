@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRuleEngine } from "../authoring/ruleEngine";
+import type { RecognitionModel } from "../ml/classifierTypes";
 import type { Asset, StateBinding } from "../projects/projectTypes";
+import { createCameraStateRecognizer } from "./cameraStateRecognizer";
 import {
   createSequenceRecognizer,
   type RecognitionSession,
@@ -17,16 +19,24 @@ const TEST_STATES: TestState[] = [
   { id: "state_b", name: "状态 B" }
 ];
 
+type CameraRecognizerFactory = (
+  video: HTMLVideoElement,
+  model: RecognitionModel
+) => StateRecognizer;
+
 export function TestScreen(props: {
   assets: Asset[];
   bindings: StateBinding[];
+  recognitionModel?: RecognitionModel;
   recognizer?: StateRecognizer;
+  createCameraRecognizer?: CameraRecognizerFactory;
   onBackHome: () => void;
 }) {
-  const recognizer = useMemo(
+  const sequenceRecognizer = useMemo(
     () => props.recognizer ?? createSequenceRecognizer(TEST_STATES.map((state) => state.id)),
     [props.recognizer]
   );
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
@@ -52,6 +62,12 @@ export function TestScreen(props: {
       return;
     }
 
+    const recognizer = createActiveRecognizer({
+      cameraRecognizerFactory: props.createCameraRecognizer,
+      model: props.recognitionModel,
+      sequenceRecognizer,
+      video: videoRef.current
+    });
     const session = await recognizer.start((prediction) => {
       const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
         id: prediction.stateId,
@@ -85,6 +101,13 @@ export function TestScreen(props: {
       </div>
 
       <div className="ar-test-stage" aria-label="AR 测试预览">
+        <video
+          aria-label="测试摄像头预览"
+          className="ar-test-video"
+          muted
+          playsInline
+          ref={videoRef}
+        />
         <div className="ar-test-camera">相机画面预览</div>
         <div className="ar-test-overlay" aria-live="polite">
           {previewContent}
@@ -132,6 +155,29 @@ export function TestScreen(props: {
       </button>
     </div>
   );
+}
+
+function createActiveRecognizer(input: {
+  cameraRecognizerFactory?: CameraRecognizerFactory;
+  model?: RecognitionModel;
+  sequenceRecognizer: StateRecognizer;
+  video: HTMLVideoElement | null;
+}) {
+  if (input.model && input.video) {
+    const factory = input.cameraRecognizerFactory ?? createDefaultCameraRecognizer;
+
+    return factory(input.video, input.model);
+  }
+
+  return input.sequenceRecognizer;
+}
+
+function createDefaultCameraRecognizer(video: HTMLVideoElement, model: RecognitionModel) {
+  return createCameraStateRecognizer({
+    video,
+    classifier: model.classifier,
+    embedder: model.embedder
+  });
 }
 
 function formatConfidence(confidence: number | undefined) {

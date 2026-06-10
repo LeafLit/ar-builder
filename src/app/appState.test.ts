@@ -30,6 +30,24 @@ describe("appReducer", () => {
     expect(state.sampleCounts.state_b).toBe(0);
   });
 
+  it("stores a trained recognition model", () => {
+    const model = {
+      classifier: {
+        predict: vi.fn()
+      },
+      embedder: {
+        embed: vi.fn()
+      }
+    };
+
+    const state = appReducer(initialAppState, {
+      type: "storeRecognitionModel",
+      model
+    });
+
+    expect(state.recognitionModel).toBe(model);
+  });
+
   it("stores text outputs as assets and state bindings", () => {
     const state = appReducer(initialAppState, {
       type: "saveTextOutputs",

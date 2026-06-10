@@ -8,11 +8,19 @@ export type Prediction = {
   confidence: number;
 };
 
-export type TrainableClassifier = {
-  train(examples: TrainingExample[]): void;
+export type ClassifierPredictor = {
   predict(embedding: number[]): Prediction | undefined;
+};
+
+export type TrainableClassifier = ClassifierPredictor & {
+  train(examples: TrainingExample[]): void;
 };
 
 export type ImageEmbedder = {
   embed(image: HTMLImageElement | HTMLCanvasElement | ImageData): Promise<number[]>;
+};
+
+export type RecognitionModel = {
+  classifier: ClassifierPredictor;
+  embedder: ImageEmbedder;
 };

@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { RecognitionModel } from "./classifierTypes";
 import { TrainScreen, type ModelTrainer } from "./TrainScreen";
 
-function createFakeTrainer(): ModelTrainer {
+function createFakeTrainer(model?: RecognitionModel): ModelTrainer {
   return {
     train: vi.fn(async () => ({
       stateCount: 2,
-      exampleCount: 6
+      exampleCount: 6,
+      model
     }))
   };
 }
@@ -37,6 +39,35 @@ describe("TrainScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "下一步：编辑" }));
     expect(onNext).toHaveBeenCalledTimes(1);
     expect(trainer.train).toHaveBeenCalledWith("project_1");
+  });
+
+  it("notifies the app when training produces a recognition model", async () => {
+    const model: RecognitionModel = {
+      classifier: {
+        predict: vi.fn()
+      },
+      embedder: {
+        embed: vi.fn()
+      }
+    };
+    const trainer = createFakeTrainer(model);
+    const onModelTrained = vi.fn();
+
+    render(
+      <TrainScreen
+        onModelTrained={onModelTrained}
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 3, state_b: 3 }}
+        trainer={trainer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "开始训练" }));
+
+    await waitFor(() => {
+      expect(onModelTrained).toHaveBeenCalledWith(model);
+    });
   });
 
   it("uses captured sample counts when no custom trainer is provided", async () => {

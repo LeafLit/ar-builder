@@ -1,12 +1,17 @@
 import { useState } from "react";
+import type { RecognitionModel } from "./classifierTypes";
 
 export type TrainingSummary = {
   stateCount: number;
   exampleCount: number;
 };
 
+export type TrainingResult = TrainingSummary & {
+  model?: RecognitionModel;
+};
+
 export type ModelTrainer = {
-  train(projectId: string): Promise<TrainingSummary>;
+  train(projectId: string): Promise<TrainingResult>;
 };
 
 function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTrainer {
@@ -24,6 +29,7 @@ export function TrainScreen(props: {
   projectId?: string;
   sampleCounts?: Record<string, number>;
   trainer?: ModelTrainer;
+  onModelTrained?: (model: RecognitionModel) => void;
   onNext: () => void;
 }) {
   const projectId = props.projectId ?? "local_project";
@@ -40,6 +46,9 @@ export function TrainScreen(props: {
 
     try {
       const summary = await trainer.train(projectId);
+      if (summary.model) {
+        props.onModelTrained?.(summary.model);
+      }
       setTrained(true);
       setStatus(`训练完成：${summary.stateCount} 个状态，${summary.exampleCount} 个样本。`);
     } catch {

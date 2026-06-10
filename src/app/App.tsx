@@ -1,12 +1,28 @@
-import { useReducer } from "react";
+import { useMemo, useReducer } from "react";
 import { appReducer, initialAppState } from "./appState";
 import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
-import { TrainScreen } from "../features/ml/TrainScreen";
+import { TrainScreen, type ModelTrainer } from "../features/ml/TrainScreen";
 import { TestScreen } from "../features/testing/TestScreen";
 
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const trainer = useMemo<ModelTrainer | undefined>(() => {
+    const stateIds = Object.keys(state.sampleCounts);
+    const hasSamples = stateIds.some((stateId) => (state.sampleCounts[stateId] ?? 0) > 0);
+
+    if (!hasSamples) {
+      return undefined;
+    }
+
+    return {
+      async train(projectId) {
+        const { createSampleModelTrainer } = await import("../features/ml/sampleModelTrainer");
+
+        return createSampleModelTrainer({ stateIds }).train(projectId);
+      }
+    };
+  }, [state.sampleCounts]);
 
   return (
     <main className="app-shell">
@@ -45,6 +61,8 @@ export function App() {
           <TrainScreen
             projectId={state.projectId}
             sampleCounts={state.sampleCounts}
+            trainer={trainer}
+            onModelTrained={(model) => dispatch({ type: "storeRecognitionModel", model })}
             onNext={() => dispatch({ type: "goTo", screen: "author" })}
           />
         )}
@@ -62,6 +80,7 @@ export function App() {
           <TestScreen
             assets={state.assets}
             bindings={state.bindings}
+            recognitionModel={state.recognitionModel}
             onBackHome={() => dispatch({ type: "goTo", screen: "home" })}
           />
         )}

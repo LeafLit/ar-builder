@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { RecognitionModel } from "../ml/classifierTypes";
 import type { Asset, StateBinding } from "../projects/projectTypes";
 import { TestScreen } from "./TestScreen";
 import type { RecognitionListener, StateRecognizer } from "./stateRecognizer";
@@ -103,5 +104,38 @@ describe("TestScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "停止自动识别" }));
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates a camera recognizer when a trained model is available", async () => {
+    const stop = vi.fn();
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async () => ({ stop }))
+    };
+    const model: RecognitionModel = {
+      classifier: {
+        predict: vi.fn()
+      },
+      embedder: {
+        embed: vi.fn()
+      }
+    };
+    const createRecognizer = vi.fn(() => recognizer);
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        createCameraRecognizer={createRecognizer}
+        onBackHome={vi.fn()}
+        recognitionModel={model}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(createRecognizer).toHaveBeenCalledWith(expect.any(HTMLVideoElement), model);
+    });
+    expect(recognizer.start).toHaveBeenCalledTimes(1);
   });
 });

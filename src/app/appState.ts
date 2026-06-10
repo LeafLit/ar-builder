@@ -1,4 +1,5 @@
 import type { Asset, StateBinding, Transform } from "../features/projects/projectTypes";
+import type { RecognitionModel } from "../features/ml/classifierTypes";
 
 export type AppScreen = "home" | "capture" | "train" | "author" | "test";
 
@@ -8,13 +9,15 @@ export type AppState = {
   sampleCounts: Record<string, number>;
   assets: Asset[];
   bindings: StateBinding[];
+  recognitionModel?: RecognitionModel;
 };
 
 export type AppAction =
   | { type: "goTo"; screen: AppScreen }
   | { type: "selectProject"; projectId: string }
   | { type: "recordSample"; stateId: string; count: number }
-  | { type: "saveTextOutputs"; outputs: Record<string, string> };
+  | { type: "saveTextOutputs"; outputs: Record<string, string> }
+  | { type: "storeRecognitionModel"; model: RecognitionModel };
 
 const DEFAULT_TEXT_TRANSFORM: Transform = {
   position: [0, 0, 0],
@@ -45,6 +48,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           ...state.sampleCounts,
           [action.stateId]: action.count
         }
+      };
+    case "storeRecognitionModel":
+      return {
+        ...state,
+        recognitionModel: action.model
       };
     case "saveTextOutputs": {
       const stateIds = Object.keys(action.outputs);
