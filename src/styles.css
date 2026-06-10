@@ -80,6 +80,10 @@ textarea {
   gap: 12px;
 }
 
+.compact-stack {
+  gap: 6px;
+}
+
 .muted {
   color: #64748b;
 }
@@ -141,6 +145,37 @@ textarea {
   padding: 10px 12px;
   color: #0f172a;
   background: #f0f9ff;
+}
+
+.readiness-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.readiness-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.readiness-item.ready {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.readiness-item.warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.readiness-item.blocked {
+  border-color: #fecaca;
+  background: #fef2f2;
 }
 
 .binding-list {

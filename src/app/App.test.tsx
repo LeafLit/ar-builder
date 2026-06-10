@@ -7,6 +7,7 @@ describe("App", () => {
 
     expect(screen.getByText("AR Builder")).toBeInTheDocument();
     expect(screen.getByText(/第一版优先使用 PWA/)).toBeInTheDocument();
+    expect(screen.getByText("真机体验检查")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "新建项目" })).toBeInTheDocument();
   });
 

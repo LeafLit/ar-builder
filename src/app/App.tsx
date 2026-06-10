@@ -2,6 +2,7 @@ import { useMemo, useReducer } from "react";
 import { appReducer, initialAppState } from "./appState";
 import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
+import { DeviceReadinessPanel } from "../features/device/DeviceReadinessPanel";
 import { TrainScreen, type ModelTrainer } from "../features/ml/TrainScreen";
 import { TestScreen } from "../features/testing/TestScreen";
 
@@ -38,6 +39,7 @@ export function App() {
             <p className="muted">
               第一版优先使用 PWA：Android 尽量启用 WebXR，iOS 和鸿蒙使用相机叠加降级。
             </p>
+            <DeviceReadinessPanel />
             <button
               className="primary-button"
               onClick={() => dispatch({ type: "goTo", screen: "capture" })}
