@@ -70,8 +70,8 @@ export function TrainScreen(props: {
       }
       setTrained(true);
       setStatus(`训练完成：${summary.stateCount} 个状态，${summary.exampleCount} 个样本。`);
-    } catch {
-      setStatus("训练失败，请先确认每个状态都有样本。");
+    } catch (error) {
+      setStatus(createTrainingFailureMessage(error));
     } finally {
       setIsTraining(false);
     }
@@ -112,4 +112,16 @@ export function TrainScreen(props: {
       </button>
     </div>
   );
+}
+
+function createTrainingFailureMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    if (error.message.includes("没有可训练样本") || error.message.includes("missing samples")) {
+      return "训练失败，请先确认每个状态都有样本。";
+    }
+
+    return `训练失败：${error.message}`;
+  }
+
+  return "训练失败，请先确认每个状态都有样本。";
 }

@@ -10,6 +10,7 @@ import {
   type TrainingExample
 } from "./classifierTypes";
 import { createEmbeddingClassifier } from "./embeddingClassifier";
+import { createLocalImageEmbedder } from "./localImageEmbedder";
 import type { ModelTrainer, TrainingResult } from "./TrainScreen";
 
 export type SampleImageLoader = (
@@ -79,9 +80,7 @@ export function createSampleModelTrainer(options: SampleModelTrainerOptions): Mo
 }
 
 async function createDefaultEmbedder() {
-  const { createMobileNetEmbedder } = await import("./mobileNetEmbedder");
-
-  return createMobileNetEmbedder();
+  return createLocalImageEmbedder();
 }
 
 function loadBlobAsImage(blob: Blob): Promise<HTMLImageElement> {

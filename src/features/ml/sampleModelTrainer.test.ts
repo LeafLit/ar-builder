@@ -86,4 +86,39 @@ describe("sampleModelTrainer", () => {
       "状态 state_b 没有可训练样本。"
     );
   });
+
+  it("uses the local image embedder by default so training does not depend on a remote model", async () => {
+    const darkImage = {
+      data: new Uint8ClampedArray(4 * 4 * 4),
+      height: 4,
+      width: 4
+    } as ImageData;
+    const brightPixels = new Uint8ClampedArray(4 * 4 * 4).fill(255);
+    const brightImage = {
+      data: brightPixels,
+      height: 4,
+      width: 4
+    } as ImageData;
+    const sampleStore = createFakeSampleStore([
+      createSample("sample_a", "project_1", "state_a", new Blob(["state-a"])),
+      createSample("sample_b", "project_1", "state_b", new Blob(["state-b"]))
+    ]);
+    const imageLoader = vi.fn().mockResolvedValueOnce(darkImage).mockResolvedValueOnce(brightImage);
+
+    const trainer = createSampleModelTrainer({
+      stateIds: ["state_a", "state_b"],
+      sampleStore,
+      imageLoader
+    });
+
+    const result = await trainer.train("project_1");
+
+    expect(result.exampleCount).toBe(2);
+    expect(result.model?.classifier.predict(await result.model.embedder.embed(darkImage))?.stateId).toBe(
+      "state_a"
+    );
+    expect(
+      result.model?.classifier.predict(await result.model.embedder.embed(brightImage))?.stateId
+    ).toBe("state_b");
+  });
 });

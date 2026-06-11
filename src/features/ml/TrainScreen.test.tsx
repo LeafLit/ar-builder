@@ -135,4 +135,29 @@ describe("TrainScreen", () => {
     });
     expect(screen.getByRole("button", { name: "下一步：编辑" })).toBeDisabled();
   });
+
+  it("shows the real training error when samples exist but model preparation fails", async () => {
+    const trainer: ModelTrainer = {
+      train: vi.fn(async () => {
+        throw new Error("基础识别模型加载失败，请刷新后重试。");
+      })
+    };
+
+    render(
+      <TrainScreen
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 31, state_b: 33 }}
+        trainer={trainer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "开始训练" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("训练失败：基础识别模型加载失败，请刷新后重试。")
+      ).toBeInTheDocument();
+    });
+  });
 });
