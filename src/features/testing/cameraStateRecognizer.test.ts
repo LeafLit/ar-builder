@@ -27,15 +27,20 @@ function createFakeClassifier(): TrainableClassifier {
 }
 
 describe("cameraStateRecognizer", () => {
-  it("captures a camera frame, embeds it, and emits classifier predictions", async () => {
+  it("extracts a lightweight video frame, embeds it, and emits classifier predictions", async () => {
     const video = document.createElement("video");
     const stream = { getTracks: () => [] } as unknown as MediaStream;
     const frame = new Blob(["frame"], { type: "image/jpeg" });
-    const image = document.createElement("canvas");
+    const image = {
+      data: new Uint8ClampedArray(4 * 4 * 4),
+      height: 4,
+      width: 4
+    } as ImageData;
     const cameraService = createFakeCameraService(stream, frame);
     const embedder = createFakeEmbedder([0.1, 0.2]);
     const classifier = createFakeClassifier();
     const frameLoader = vi.fn(async () => image);
+    const frameExtractor = vi.fn(() => image);
     const onResult = vi.fn();
 
     const recognizer = createCameraStateRecognizer({
@@ -43,15 +48,18 @@ describe("cameraStateRecognizer", () => {
       cameraService,
       embedder,
       classifier,
+      frameExtractor,
       frameLoader,
+      frameSize: 4,
       intervalMs: 1000
     });
 
     await recognizer.start(onResult);
 
     expect(cameraService.start).toHaveBeenCalledWith(video);
-    expect(cameraService.captureFrame).toHaveBeenCalledWith(video);
-    expect(frameLoader).toHaveBeenCalledWith(frame);
+    expect(cameraService.captureFrame).not.toHaveBeenCalled();
+    expect(frameExtractor).toHaveBeenCalledWith(video, 4);
+    expect(frameLoader).not.toHaveBeenCalled();
     expect(embedder.embed).toHaveBeenCalledWith(image);
     expect(classifier.predict).toHaveBeenCalledWith([0.1, 0.2]);
     expect(onResult).toHaveBeenCalledWith({
@@ -66,12 +74,22 @@ describe("cameraStateRecognizer", () => {
     const stream = { getTracks: () => [] } as unknown as MediaStream;
     const frame = new Blob(["frame"], { type: "image/jpeg" });
     const cameraService = createFakeCameraService(stream, frame);
+    const frameExtractor = vi.fn(
+      () =>
+        ({
+          data: new Uint8ClampedArray(4 * 4 * 4),
+          height: 4,
+          width: 4
+        }) as ImageData
+    );
     const recognizer = createCameraStateRecognizer({
       video,
       cameraService,
       embedder: createFakeEmbedder([0.1]),
       classifier: createFakeClassifier(),
+      frameExtractor,
       frameLoader: vi.fn(async () => document.createElement("canvas")),
+      frameSize: 4,
       intervalMs: 100
     });
 
@@ -80,7 +98,8 @@ describe("cameraStateRecognizer", () => {
     vi.advanceTimersByTime(100);
 
     expect(cameraService.stop).toHaveBeenCalledWith(stream);
-    expect(cameraService.captureFrame).toHaveBeenCalledTimes(1);
+    expect(frameExtractor).toHaveBeenCalledTimes(1);
+    expect(cameraService.captureFrame).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 });

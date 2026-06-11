@@ -3,13 +3,16 @@ import type { ImageEmbedder, TrainableClassifier } from "../ml/classifierTypes";
 import type { RecognitionListener, RecognitionSession, StateRecognizer } from "./stateRecognizer";
 
 export type FrameLoader = (blob: Blob) => Promise<HTMLImageElement | HTMLCanvasElement | ImageData>;
+export type FrameExtractor = (video: HTMLVideoElement, size: number) => ImageData;
 
 export type CameraStateRecognizerOptions = {
   video: HTMLVideoElement;
   embedder: ImageEmbedder;
   classifier: Pick<TrainableClassifier, "predict">;
   cameraService?: CameraService;
+  frameExtractor?: FrameExtractor;
   frameLoader?: FrameLoader;
+  frameSize?: number;
   intervalMs?: number;
 };
 
@@ -17,8 +20,9 @@ export function createCameraStateRecognizer(
   options: CameraStateRecognizerOptions
 ): StateRecognizer {
   const cameraService = options.cameraService ?? createCameraService();
-  const frameLoader = options.frameLoader ?? loadBlobAsImage;
-  const intervalMs = options.intervalMs ?? 900;
+  const frameExtractor = options.frameExtractor ?? extractVideoFrame;
+  const frameSize = options.frameSize ?? 48;
+  const intervalMs = options.intervalMs ?? 350;
 
   return {
     async start(onResult: RecognitionListener): Promise<RecognitionSession> {
@@ -34,8 +38,7 @@ export function createCameraStateRecognizer(
         recognizing = true;
 
         try {
-          const frame = await cameraService.captureFrame(options.video);
-          const image = await frameLoader(frame);
+          const image = frameExtractor(options.video, frameSize);
           const embedding = await options.embedder.embed(image);
           const prediction = options.classifier.predict(embedding);
 
@@ -63,19 +66,18 @@ export function createCameraStateRecognizer(
   };
 }
 
-function loadBlobAsImage(blob: Blob): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    const url = URL.createObjectURL(blob);
+function extractVideoFrame(video: HTMLVideoElement, size: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
 
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("无法读取相机帧。"));
-    };
-    image.src = url;
-  });
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+
+  if (!context) {
+    throw new Error("无法创建实时识别画布。");
+  }
+
+  context.drawImage(video, 0, 0, size, size);
+
+  return context.getImageData(0, 0, size, size);
 }
