@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createScreenAnchorPlacement } from "../ar/screenAnchor";
 import { createRuleEngine } from "../authoring/ruleEngine";
 import type { RecognitionModel } from "../ml/classifierTypes";
 import type { Asset, StateBinding, Transform } from "../projects/projectTypes";
 import { createCameraStateRecognizer } from "./cameraStateRecognizer";
-import {
-  createSequenceRecognizer,
-  type RecognitionSession,
-  type StateRecognizer
-} from "./stateRecognizer";
+import { type RecognitionSession, type StateRecognizer } from "./stateRecognizer";
 
 type TestState = {
   id: string;
@@ -21,6 +17,7 @@ const TEST_STATES: TestState[] = [
   { id: "state_a", name: "状态 A" },
   { id: "state_b", name: "状态 B" }
 ];
+const MIN_RECOGNITION_CONFIDENCE = 0.45;
 
 type CameraRecognizerFactory = (
   video: HTMLVideoElement,
@@ -35,10 +32,6 @@ export function TestScreen(props: {
   createCameraRecognizer?: CameraRecognizerFactory;
   onBackHome: () => void;
 }) {
-  const sequenceRecognizer = useMemo(
-    () => props.recognizer ?? createSequenceRecognizer(TEST_STATES.map((state) => state.id)),
-    [props.recognizer]
-  );
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
@@ -68,15 +61,23 @@ export function TestScreen(props: {
     }
 
     setRecognitionPhase("starting");
+    setDetectedState(undefined);
+    setConfidence(undefined);
 
     try {
       const recognizer = createActiveRecognizer({
         cameraRecognizerFactory: props.createCameraRecognizer,
         model: props.recognitionModel,
-        sequenceRecognizer,
+        recognizer: props.recognizer,
         video: videoRef.current
       });
       const session = await recognizer.start((prediction) => {
+        if (prediction.confidence < MIN_RECOGNITION_CONFIDENCE) {
+          setDetectedState(undefined);
+          setConfidence(prediction.confidence);
+          return;
+        }
+
         const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
           id: prediction.stateId,
           name: prediction.stateId
@@ -195,6 +196,10 @@ function createStatusText(input: {
     return `当前识别：${input.detectedState.name}${formatConfidence(input.confidence)}`;
   }
 
+  if (input.recognitionPhase === "running" && input.confidence !== undefined) {
+    return "自动识别中，未识别到已训练状态。";
+  }
+
   if (input.recognitionPhase === "running") {
     return "自动识别中，等待结果。";
   }
@@ -205,16 +210,20 @@ function createStatusText(input: {
 function createActiveRecognizer(input: {
   cameraRecognizerFactory?: CameraRecognizerFactory;
   model?: RecognitionModel;
-  sequenceRecognizer: StateRecognizer;
+  recognizer?: StateRecognizer;
   video: HTMLVideoElement | null;
 }) {
+  if (input.recognizer) {
+    return input.recognizer;
+  }
+
   if (input.model && input.video) {
     const factory = input.cameraRecognizerFactory ?? createDefaultCameraRecognizer;
 
     return factory(input.video, input.model);
   }
 
-  return input.sequenceRecognizer;
+  throw new Error("Missing trained recognition model.");
 }
 
 function createDefaultCameraRecognizer(video: HTMLVideoElement, model: RecognitionModel) {
