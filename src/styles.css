@@ -178,6 +178,84 @@ textarea {
   background: #fef2f2;
 }
 
+.feedback-form {
+  display: grid;
+  gap: 10px;
+}
+
+.feedback-field {
+  display: grid;
+  gap: 6px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.feedback-field input,
+.feedback-field textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  color: #0f172a;
+  background: #ffffff;
+  font-weight: 400;
+}
+
+.feedback-field textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.feedback-field input:focus,
+.feedback-field textarea:focus {
+  border-color: #0f766e;
+  outline: 3px solid #ccfbf1;
+}
+
+.feedback-checklist {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0;
+  background: #f8fafc;
+}
+
+.feedback-checklist legend {
+  padding: 0 6px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.feedback-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.feedback-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0f766e;
+}
+
+.feedback-preview {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  color: #334155;
+  background: #f8fafc;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .binding-list {
   display: grid;
   gap: 10px;
