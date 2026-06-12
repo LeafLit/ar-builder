@@ -124,13 +124,15 @@ export function TestScreen(props: {
           ref={videoRef}
         />
         <div className="ar-test-camera">相机画面预览</div>
-        <div
-          className={`ar-test-overlay ${output?.asset?.type === "image2d" ? "image-output" : ""}`}
-          aria-live="polite"
-          style={anchorStyle}
-        >
-          {output ? renderOutput(output) : "等待 AR 输出。"}
-        </div>
+        {output && (
+          <div
+            className={`ar-test-overlay ${output.asset?.type === "image2d" ? "image-output" : ""}`}
+            aria-live="polite"
+            style={anchorStyle}
+          >
+            {renderOutput(output)}
+          </div>
+        )}
       </div>
 
       <div className="state-grid">

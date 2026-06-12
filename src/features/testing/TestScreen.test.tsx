@@ -51,6 +51,15 @@ const bindings: StateBinding[] = [
 ];
 
 describe("TestScreen", () => {
+  it("does not render a virtual object before any state is detected", () => {
+    const { container } = render(
+      <TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("等待识别状态。");
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
+  });
+
   it("shows the text output for a simulated detected state", () => {
     render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
 
