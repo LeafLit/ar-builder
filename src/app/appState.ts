@@ -1,5 +1,6 @@
 import type {
   Asset,
+  Project,
   StateBinding,
   StateOutputDraft,
   Transform
@@ -22,7 +23,8 @@ export type AppAction =
   | { type: "selectProject"; projectId: string }
   | { type: "recordSample"; stateId: string; count: number }
   | { type: "saveTextOutputs"; outputs: Record<string, string | StateOutputDraft> }
-  | { type: "storeRecognitionModel"; model: RecognitionModel };
+  | { type: "storeRecognitionModel"; model: RecognitionModel }
+  | { type: "loadProject"; project: Project };
 
 const DEFAULT_TEXT_TRANSFORM: Transform = {
   position: [0, 0, 0],
@@ -46,6 +48,24 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, screen: action.screen };
     case "selectProject":
       return { ...state, projectId: action.projectId };
+    case "loadProject":
+      return {
+        ...state,
+        screen: "author",
+        projectId: action.project.id,
+        sampleCounts: {
+          ...initialAppState.sampleCounts,
+          ...Object.fromEntries(
+            action.project.states.map((projectState) => [
+              projectState.id,
+              projectState.sampleIds.length
+            ])
+          )
+        },
+        assets: action.project.assets,
+        bindings: action.project.bindings,
+        recognitionModel: undefined
+      };
     case "recordSample":
       return {
         ...state,

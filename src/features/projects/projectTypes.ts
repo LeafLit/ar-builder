@@ -69,3 +69,11 @@ export type Project = {
   assets: Asset[];
   bindings: StateBinding[];
 };
+
+export type ProjectSummary = {
+  id: string;
+  name: string;
+  updatedAt: string;
+  assets: number;
+  bindings: number;
+};

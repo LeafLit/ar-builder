@@ -1,4 +1,5 @@
 import { appReducer, initialAppState } from "./appState";
+import type { Project } from "../features/projects/projectTypes";
 
 describe("appReducer", () => {
   it("moves through the main authoring steps", () => {
@@ -17,6 +18,42 @@ describe("appReducer", () => {
     });
 
     expect(state.projectId).toBe("project_1");
+  });
+
+  it("loads a saved project for editing", () => {
+    const project: Project = {
+      id: "project_saved",
+      name: "保存的项目",
+      createdAt: "2026-06-12T12:00:00.000Z",
+      updatedAt: "2026-06-12T12:30:00.000Z",
+      states: [
+        {
+          id: "state_a",
+          name: "状态 A",
+          order: 0,
+          sampleIds: ["sample_1"]
+        }
+      ],
+      assets: [
+        {
+          id: "asset_text_state_a",
+          type: "text",
+          name: "状态 A 文字",
+          content: "继续编辑"
+        }
+      ],
+      bindings: []
+    };
+
+    const state = appReducer(initialAppState, { type: "loadProject", project });
+
+    expect(state.screen).toBe("author");
+    expect(state.projectId).toBe("project_saved");
+    expect(state.sampleCounts).toEqual({
+      state_a: 1,
+      state_b: 0
+    });
+    expect(state.assets).toEqual(project.assets);
   });
 
   it("records captured sample counts by state", () => {

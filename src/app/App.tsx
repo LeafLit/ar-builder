@@ -1,14 +1,21 @@
 import { useMemo, useReducer } from "react";
+import { createProjectFromAppState, createProjectSummary } from "./appProjectSnapshot";
 import { appReducer, initialAppState } from "./appState";
 import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
 import { DeviceReadinessPanel } from "../features/device/DeviceReadinessPanel";
 import { RealDeviceFeedbackPanel } from "../features/feedback/RealDeviceFeedbackPanel";
 import { TrainScreen, type ModelTrainer } from "../features/ml/TrainScreen";
+import { ProjectLibraryPanel } from "../features/projects/ProjectLibraryPanel";
+import {
+  createProjectRepository,
+  type ProjectRepository
+} from "../features/projects/projectRepository";
 import { TestScreen } from "../features/testing/TestScreen";
 
-export function App() {
+export function App({ projectRepository = createProjectRepository() }: { projectRepository?: ProjectRepository }) {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const hasEditableProject = state.assets.length > 0 || state.bindings.length > 0;
   const trainer = useMemo<ModelTrainer | undefined>(() => {
     const stateIds = Object.keys(state.sampleCounts);
     const hasSamples = stateIds.some((stateId) => (state.sampleCounts[stateId] ?? 0) > 0);
@@ -26,6 +33,23 @@ export function App() {
     };
   }, [state.sampleCounts]);
 
+  async function saveCurrentProject() {
+    const project = createProjectFromAppState(state, {
+      name: "AR Builder 本机项目"
+    });
+
+    await projectRepository.save(project);
+    dispatch({ type: "loadProject", project });
+  }
+
+  async function openProject(projectId: string) {
+    const project = await projectRepository.get(projectId);
+
+    if (project) {
+      dispatch({ type: "loadProject", project });
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -42,6 +66,13 @@ export function App() {
             </p>
             <DeviceReadinessPanel />
             <RealDeviceFeedbackPanel />
+            <ProjectLibraryPanel
+              listProjects={async () =>
+                (await projectRepository.list()).map((project) => createProjectSummary(project))
+              }
+              onOpenProject={openProject}
+              onSaveProject={saveCurrentProject}
+            />
             <button
               className="primary-button"
               onClick={() => dispatch({ type: "goTo", screen: "capture" })}
@@ -72,21 +103,45 @@ export function App() {
         )}
 
         {state.screen === "author" && (
-          <AuthoringScreen
-            assets={state.assets}
-            bindings={state.bindings}
-            onSaveTextOutputs={(outputs) => dispatch({ type: "saveTextOutputs", outputs })}
-            onNext={() => dispatch({ type: "goTo", screen: "test" })}
-          />
+          <div className="stack">
+            <AuthoringScreen
+              assets={state.assets}
+              bindings={state.bindings}
+              onSaveTextOutputs={(outputs) => dispatch({ type: "saveTextOutputs", outputs })}
+              onNext={() => dispatch({ type: "goTo", screen: "test" })}
+            />
+            <div className="action-row">
+              <button
+                className="secondary-button"
+                disabled={!hasEditableProject}
+                onClick={saveCurrentProject}
+                type="button"
+              >
+                保存项目
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => dispatch({ type: "goTo", screen: "home" })}
+                type="button"
+              >
+                返回首页
+              </button>
+            </div>
+          </div>
         )}
 
         {state.screen === "test" && (
-          <TestScreen
-            assets={state.assets}
-            bindings={state.bindings}
-            recognitionModel={state.recognitionModel}
-            onBackHome={() => dispatch({ type: "goTo", screen: "home" })}
-          />
+          <div className="stack">
+            <TestScreen
+              assets={state.assets}
+              bindings={state.bindings}
+              recognitionModel={state.recognitionModel}
+              onBackHome={() => dispatch({ type: "goTo", screen: "home" })}
+            />
+            <button className="secondary-button" onClick={saveCurrentProject} type="button">
+              保存项目
+            </button>
+          </div>
         )}
       </section>
     </main>

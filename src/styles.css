@@ -316,6 +316,24 @@ textarea {
   background-size: 16px 16px;
 }
 
+.project-list {
+  display: grid;
+  gap: 10px;
+}
+
+.project-list-item {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.project-list-item .secondary-button {
+  width: 100%;
+}
+
 .anchor-controls {
   display: grid;
   gap: 10px;
