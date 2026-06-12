@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Asset, StateBinding, TextOutputDraft, Transform } from "../projects/projectTypes";
+import type { Asset, StateBinding, StateOutputDraft, Transform } from "../projects/projectTypes";
 
 type AuthoringState = {
   id: string;
@@ -20,31 +20,28 @@ const DEFAULT_TEXT_TRANSFORM: Transform = {
 export function AuthoringScreen(props: {
   assets: Asset[];
   bindings: StateBinding[];
-  onSaveTextOutputs: (outputs: Record<string, TextOutputDraft>) => void;
+  imageReader?: (file: File) => Promise<string>;
+  onSaveTextOutputs: (outputs: Record<string, StateOutputDraft>) => void;
   onNext: () => void;
 }) {
-  const [outputs, setOutputs] = useState<Record<string, TextOutputDraft>>(() =>
+  const [outputs, setOutputs] = useState<Record<string, StateOutputDraft>>(() =>
     Object.fromEntries(
       AUTHORING_STATES.map((state) => [
         state.id,
-        getTextOutputDraft(state.id, props.assets, props.bindings)
+        getStateOutputDraft(state.id, props.assets, props.bindings)
       ])
     )
   );
   const [saved, setSaved] = useState(props.bindings.length > 0);
-  const filledOutputCount = AUTHORING_STATES.filter((state) =>
-    outputs[state.id].content.trim()
-  ).length;
+  const filledOutputCount = AUTHORING_STATES.filter((state) => isOutputReady(outputs[state.id]))
+    .length;
   const canSave = filledOutputCount === AUTHORING_STATES.length;
 
   function saveBindings() {
     const trimmedOutputs = Object.fromEntries(
       AUTHORING_STATES.map((state) => [
         state.id,
-        {
-          ...outputs[state.id],
-          content: outputs[state.id].content.trim()
-        }
+        normalizeOutputForSave(outputs[state.id])
       ])
     );
     props.onSaveTextOutputs(trimmedOutputs);
@@ -56,9 +53,53 @@ export function AuthoringScreen(props: {
       ...current,
       [stateId]: {
         ...current[stateId],
+        assetType: "text",
         content
       }
     }));
+  }
+
+  function updateOutputType(stateId: string, assetType: "text" | "image2d") {
+    setOutputs((current) => {
+      const currentOutput = current[stateId];
+      const transform = cloneTransform(currentOutput.transform);
+
+      return {
+        ...current,
+        [stateId]:
+          assetType === "image2d"
+            ? {
+                assetType: "image2d",
+                name: "",
+                url: "",
+                transform
+              }
+            : {
+                assetType: "text",
+                content: "",
+                transform
+              }
+      };
+    });
+  }
+
+  async function updateImageOutput(stateId: string, file: File) {
+    const readImage = props.imageReader ?? readImageFile;
+    const url = await readImage(file);
+
+    setOutputs((current) => {
+      const currentOutput = current[stateId];
+
+      return {
+        ...current,
+        [stateId]: {
+          assetType: "image2d",
+          name: file.name,
+          url,
+          transform: cloneTransform(currentOutput.transform)
+        }
+      };
+    });
   }
 
   function updateAnchor(stateId: string, field: "x" | "y" | "scale", value: string) {
@@ -125,15 +166,56 @@ export function AuthoringScreen(props: {
           return (
             <div className="binding-card stack" key={state.id}>
               <label className="stack compact-stack">
-                <span>{state.name} 的 AR 文字</span>
-                <textarea
-                  aria-label={`${state.name} 的 AR 文字`}
-                  onChange={(event) => updateTextOutput(state.id, event.target.value)}
-                  placeholder={`识别到${state.name}时显示的内容`}
-                  rows={4}
-                  value={output.content}
-                />
+                <span>{state.name} 的输出类型</span>
+                <select
+                  aria-label={`${state.name} 的输出类型`}
+                  onChange={(event) =>
+                    updateOutputType(state.id, event.target.value as "text" | "image2d")
+                  }
+                  value={output.assetType === "image2d" ? "image2d" : "text"}
+                >
+                  <option value="text">文字</option>
+                  <option value="image2d">图片</option>
+                </select>
               </label>
+
+              {output.assetType === "image2d" ? (
+                <div className="stack compact-stack">
+                  <label className="stack compact-stack">
+                    <span>{state.name} 的 AR 图片</span>
+                    <input
+                      accept="image/*"
+                      aria-label={`${state.name} 的 AR 图片`}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+
+                        if (file) {
+                          void updateImageOutput(state.id, file);
+                        }
+                      }}
+                      type="file"
+                    />
+                  </label>
+                  {output.url && (
+                    <img
+                      alt={`${state.name} 的图片预览`}
+                      className="asset-preview"
+                      src={output.url}
+                    />
+                  )}
+                </div>
+              ) : (
+                <label className="stack compact-stack">
+                  <span>{state.name} 的 AR 文字</span>
+                  <textarea
+                    aria-label={`${state.name} 的 AR 文字`}
+                    onChange={(event) => updateTextOutput(state.id, event.target.value)}
+                    placeholder={`识别到${state.name}时显示的内容`}
+                    rows={4}
+                    value={output.content}
+                  />
+                </label>
+              )}
 
               <div className="anchor-controls" aria-label={`${state.name} 的屏幕锚点`}>
                 <label className="range-field">
@@ -194,25 +276,54 @@ export function AuthoringScreen(props: {
   );
 }
 
-function getTextOutputDraft(
+function getStateOutputDraft(
   stateId: string,
   assets: Asset[],
   bindings: StateBinding[]
-): TextOutputDraft {
+): StateOutputDraft {
   const binding = bindings.find((item) => item.stateId === stateId);
 
   if (!binding || binding.action.type !== "show") {
     return {
+      assetType: "text",
       content: "",
       transform: cloneTransform(DEFAULT_TEXT_TRANSFORM)
     };
   }
 
-  const asset = assets.find((item) => item.id === binding.action.assetId && item.type === "text");
+  const asset = assets.find((item) => item.id === binding.action.assetId);
+
+  if (asset?.type === "image2d") {
+    return {
+      assetType: "image2d",
+      name: asset.name,
+      url: asset.url ?? "",
+      transform: cloneTransform(binding.action.transform)
+    };
+  }
 
   return {
+    assetType: "text",
     content: asset?.content ?? "",
     transform: cloneTransform(binding.action.transform)
+  };
+}
+
+function isOutputReady(output: StateOutputDraft) {
+  return output.assetType === "image2d" ? Boolean(output.url) : Boolean(output.content.trim());
+}
+
+function normalizeOutputForSave(output: StateOutputDraft): StateOutputDraft {
+  if (output.assetType === "image2d") {
+    return {
+      ...output,
+      name: output.name.trim() || "AR 图片"
+    };
+  }
+
+  return {
+    content: output.content.trim(),
+    transform: cloneTransform(output.transform)
   };
 }
 
@@ -230,4 +341,14 @@ function cloneTransform(transform: Transform): Transform {
     rotation: [...transform.rotation],
     scale: [...transform.scale]
   };
+}
+
+function readImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("图片读取失败")));
+    reader.readAsDataURL(file);
+  });
 }

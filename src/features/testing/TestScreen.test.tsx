@@ -92,6 +92,45 @@ describe("TestScreen", () => {
     });
   });
 
+  it("renders an image asset as a virtual object at the saved screen anchor", () => {
+    const imageAssets: Asset[] = [
+      {
+        id: "asset_image_state_a",
+        type: "image2d",
+        name: "小树贴纸",
+        url: "data:image/png;base64,tree"
+      }
+    ];
+    const imageBindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "show",
+          assetId: "asset_image_state_a",
+          visible: true,
+          transform: {
+            position: [0.4, -0.4, 0],
+            rotation: [0, 0, 0],
+            scale: [1.4, 1.4, 1]
+          }
+        }
+      }
+    ];
+
+    render(<TestScreen assets={imageAssets} bindings={imageBindings} onBackHome={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    const image = screen.getByAltText("小树贴纸");
+    expect(image).toHaveAttribute("src", "data:image/png;base64,tree");
+    expect(image.closest(".ar-test-overlay")).toHaveStyle({
+      "--anchor-x": "70%",
+      "--anchor-y": "30%",
+      "--anchor-scale": "1.4"
+    });
+  });
+
   it("shows an empty-state message when a state has no binding", () => {
     render(<TestScreen assets={[]} bindings={[]} onBackHome={vi.fn()} />);
 

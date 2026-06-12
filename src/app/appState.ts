@@ -1,7 +1,7 @@
 import type {
   Asset,
   StateBinding,
-  TextOutputDraft,
+  StateOutputDraft,
   Transform
 } from "../features/projects/projectTypes";
 import type { RecognitionModel } from "../features/ml/classifierTypes";
@@ -21,7 +21,7 @@ export type AppAction =
   | { type: "goTo"; screen: AppScreen }
   | { type: "selectProject"; projectId: string }
   | { type: "recordSample"; stateId: string; count: number }
-  | { type: "saveTextOutputs"; outputs: Record<string, string | TextOutputDraft> }
+  | { type: "saveTextOutputs"; outputs: Record<string, string | StateOutputDraft> }
   | { type: "storeRecognitionModel"; model: RecognitionModel };
 
 const DEFAULT_TEXT_TRANSFORM: Transform = {
@@ -62,32 +62,31 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "saveTextOutputs": {
       const stateIds = Object.keys(action.outputs);
       const normalizedOutputs = Object.fromEntries(
-        stateIds.map((stateId) => [stateId, normalizeTextOutput(action.outputs[stateId])])
+        stateIds.map((stateId) => [stateId, normalizeStateOutput(action.outputs[stateId])])
       );
-      const textAssetIds = new Set(stateIds.map((stateId) => `asset_text_${stateId}`));
-      const textAssets: Asset[] = stateIds.map((stateId) => ({
-        id: `asset_text_${stateId}`,
-        type: "text",
-        name: `${stateId} 文字`,
-        content: normalizedOutputs[stateId].content.trim()
-      }));
-      const textBindings: StateBinding[] = stateIds.map((stateId) => ({
+      const replaceAssetIds = new Set(
+        stateIds.flatMap((stateId) => [`asset_text_${stateId}`, `asset_image_${stateId}`])
+      );
+      const outputAssets: Asset[] = stateIds.map((stateId) =>
+        createOutputAsset(stateId, normalizedOutputs[stateId])
+      );
+      const outputBindings: StateBinding[] = stateIds.map((stateId) => ({
         id: `binding_${stateId}`,
         stateId,
         action: {
           type: "show",
-          assetId: `asset_text_${stateId}`,
+          assetId: createOutputAssetId(stateId, normalizedOutputs[stateId]),
           transform: normalizedOutputs[stateId].transform,
           visible: true
         }
       }));
-      const preservedAssets = state.assets.filter((asset) => !textAssetIds.has(asset.id));
+      const preservedAssets = state.assets.filter((asset) => !replaceAssetIds.has(asset.id));
       const preservedBindings = state.bindings.filter((binding) => !stateIds.includes(binding.stateId));
 
       return {
         ...state,
-        assets: [...preservedAssets, ...textAssets],
-        bindings: [...preservedBindings, ...textBindings]
+        assets: [...preservedAssets, ...outputAssets],
+        bindings: [...preservedBindings, ...outputBindings]
       };
     }
     default:
@@ -95,17 +94,50 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
-function normalizeTextOutput(output: string | TextOutputDraft): TextOutputDraft {
+function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDraft {
   if (typeof output === "string") {
     return {
+      assetType: "text",
       content: output,
       transform: cloneTransform(DEFAULT_TEXT_TRANSFORM)
     };
   }
 
+  if (output.assetType === "image2d") {
+    return {
+      assetType: "image2d",
+      name: output.name,
+      url: output.url,
+      transform: cloneTransform(output.transform)
+    };
+  }
+
   return {
+    assetType: "text",
     content: output.content,
     transform: cloneTransform(output.transform)
+  };
+}
+
+function createOutputAssetId(stateId: string, output: StateOutputDraft) {
+  return output.assetType === "image2d" ? `asset_image_${stateId}` : `asset_text_${stateId}`;
+}
+
+function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
+  if (output.assetType === "image2d") {
+    return {
+      id: createOutputAssetId(stateId, output),
+      type: "image2d",
+      name: output.name.trim() || `${stateId} 图片`,
+      url: output.url
+    };
+  }
+
+  return {
+    id: createOutputAssetId(stateId, output),
+    type: "text",
+    name: `${stateId} 文字`,
+    content: output.content.trim()
   };
 }
 

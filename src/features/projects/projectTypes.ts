@@ -7,9 +7,19 @@ export type Transform = {
 };
 
 export type TextOutputDraft = {
+  assetType?: "text";
   content: string;
   transform: Transform;
 };
+
+export type ImageOutputDraft = {
+  assetType: "image2d";
+  name: string;
+  url: string;
+  transform: Transform;
+};
+
+export type StateOutputDraft = TextOutputDraft | ImageOutputDraft;
 
 export type InputState = {
   id: string;

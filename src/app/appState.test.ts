@@ -115,6 +115,47 @@ describe("appReducer", () => {
     ]);
   });
 
+  it("stores image outputs as image assets and state bindings", () => {
+    const state = appReducer(initialAppState, {
+      type: "saveTextOutputs",
+      outputs: {
+        state_a: {
+          assetType: "image2d",
+          name: "小树贴纸",
+          url: "data:image/png;base64,tree",
+          transform: {
+            position: [0.4, -0.4, 0],
+            rotation: [0, 0, 0],
+            scale: [1.4, 1.4, 1]
+          }
+        }
+      }
+    });
+
+    expect(state.assets).toEqual([
+      expect.objectContaining({
+        id: "asset_image_state_a",
+        type: "image2d",
+        name: "小树贴纸",
+        url: "data:image/png;base64,tree"
+      })
+    ]);
+    expect(state.bindings).toEqual([
+      expect.objectContaining({
+        stateId: "state_a",
+        action: expect.objectContaining({
+          type: "show",
+          assetId: "asset_image_state_a",
+          transform: {
+            position: [0.4, -0.4, 0],
+            rotation: [0, 0, 0],
+            scale: [1.4, 1.4, 1]
+          }
+        })
+      })
+    ]);
+  });
+
   it("preserves unrelated assets and bindings when saving text outputs", () => {
     const existingAsset = {
       id: "asset_image_1",

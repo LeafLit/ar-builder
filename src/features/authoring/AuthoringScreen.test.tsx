@@ -59,6 +59,55 @@ describe("AuthoringScreen", () => {
     expect(onNext).toHaveBeenCalledTimes(1);
   });
 
+  it("uploads an image output for a state and saves it with the screen anchor", async () => {
+    const onSaveTextOutputs = vi.fn();
+    const imageFile = new File(["image"], "tree.png", { type: "image/png" });
+
+    render(
+      <AuthoringScreen
+        assets={[]}
+        bindings={[]}
+        imageReader={async () => "data:image/png;base64,tree"}
+        onNext={vi.fn()}
+        onSaveTextOutputs={onSaveTextOutputs}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("状态 A 的输出类型"), {
+      target: { value: "image2d" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的 AR 图片"), {
+      target: { files: [imageFile] }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "状态 B 仍然显示文字" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的横向位置"), {
+      target: { value: "40" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的纵向位置"), {
+      target: { value: "-40" }
+    });
+
+    await screen.findByAltText("状态 A 的图片预览");
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
+    expect(onSaveTextOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_a: {
+          assetType: "image2d",
+          name: "tree.png",
+          url: "data:image/png;base64,tree",
+          transform: {
+            position: [0.4, -0.4, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          }
+        }
+      })
+    );
+  });
+
   it("loads existing text outputs for editing", () => {
     const assets: Asset[] = [
       {
@@ -97,5 +146,48 @@ describe("AuthoringScreen", () => {
     expect(screen.getByLabelText("状态 A 的 AR 文字")).toHaveValue("已经保存的 A");
     expect(screen.getByLabelText("状态 A 的大小")).toHaveValue("100");
     expect(screen.getByRole("button", { name: "下一步：测试" })).toBeEnabled();
+  });
+
+  it("loads an existing image output for editing", () => {
+    const assets: Asset[] = [
+      {
+        id: "asset_image_state_a",
+        type: "image2d",
+        name: "已有图片",
+        url: "data:image/png;base64,old"
+      }
+    ];
+    const bindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "show",
+          assetId: "asset_image_state_a",
+          visible: true,
+          transform: {
+            position: [0.2, 0.1, 0],
+            rotation: [0, 0, 0],
+            scale: [1.5, 1.5, 1]
+          }
+        }
+      }
+    ];
+
+    render(
+      <AuthoringScreen
+        assets={assets}
+        bindings={bindings}
+        onNext={vi.fn()}
+        onSaveTextOutputs={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("状态 A 的输出类型")).toHaveValue("image2d");
+    expect(screen.getByAltText("状态 A 的图片预览")).toHaveAttribute(
+      "src",
+      "data:image/png;base64,old"
+    );
+    expect(screen.getByLabelText("状态 A 的大小")).toHaveValue("150");
   });
 });

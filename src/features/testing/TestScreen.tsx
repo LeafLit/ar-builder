@@ -47,9 +47,8 @@ export function TestScreen(props: {
   const recognitionStartingOrRunning =
     recognitionPhase === "starting" || recognitionPhase === "running";
   const output = detectedState
-    ? resolveTextOutput(detectedState, props.assets, props.bindings)
+    ? resolveStateOutput(detectedState, props.assets, props.bindings)
     : undefined;
-  const previewContent = output?.content ?? "等待 AR 输出。";
   const anchorStyle = output ? createAnchorStyle(output.transform) : undefined;
   const statusText = createStatusText({
     confidence,
@@ -125,8 +124,12 @@ export function TestScreen(props: {
           ref={videoRef}
         />
         <div className="ar-test-camera">相机画面预览</div>
-        <div className="ar-test-overlay" aria-live="polite" style={anchorStyle}>
-          {previewContent}
+        <div
+          className={`ar-test-overlay ${output?.asset?.type === "image2d" ? "image-output" : ""}`}
+          aria-live="polite"
+          style={anchorStyle}
+        >
+          {output ? renderOutput(output) : "等待 AR 输出。"}
         </div>
       </div>
 
@@ -228,29 +231,37 @@ function formatConfidence(confidence: number | undefined) {
   return `（${Math.round(confidence * 100)}%）`;
 }
 
-function resolveTextOutput(state: TestState, assets: Asset[], bindings: StateBinding[]) {
+type ResolvedStateOutput = {
+  asset?: Asset;
+  message?: string;
+  transform: Transform;
+};
+
+function resolveStateOutput(
+  state: TestState,
+  assets: Asset[],
+  bindings: StateBinding[]
+): ResolvedStateOutput {
   const resolved = createRuleEngine().resolve(state.id, bindings);
 
   if (!resolved || resolved.action.type !== "show") {
     return {
-      content: `未找到${state.name} 的输出绑定。`,
+      message: `未找到${state.name} 的输出绑定。`,
       transform: DEFAULT_OUTPUT_TRANSFORM
     };
   }
 
-  const asset = assets.find(
-    (item) => item.id === resolved.action.assetId && item.type === "text"
-  );
+  const asset = assets.find((item) => item.id === resolved.action.assetId);
 
-  if (!asset?.content) {
+  if (!asset) {
     return {
-      content: `${state.name} 的文字素材为空。`,
+      message: `${state.name} 的素材为空。`,
       transform: resolved.action.transform
     };
   }
 
   return {
-    content: asset.content,
+    asset,
     transform: resolved.action.transform
   };
 }
@@ -269,4 +280,24 @@ function createAnchorStyle(transform: Transform): CSSProperties {
     "--anchor-y": `${placement.yPercent}%`,
     "--anchor-scale": `${placement.scale}`
   } as CSSProperties;
+}
+
+function renderOutput(output: ResolvedStateOutput) {
+  if (!output.asset) {
+    return output.message;
+  }
+
+  if (output.asset.type === "image2d") {
+    if (!output.asset.url) {
+      return "图片素材为空。";
+    }
+
+    return <img alt={output.asset.name} className="ar-test-image-output" src={output.asset.url} />;
+  }
+
+  if (output.asset.type === "text") {
+    return output.asset.content || "文字素材为空。";
+  }
+
+  return `${output.asset.name} 暂不支持预览。`;
 }
