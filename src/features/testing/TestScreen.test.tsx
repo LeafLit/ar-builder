@@ -200,7 +200,7 @@ describe("TestScreen", () => {
     expect(screen.queryByText("状态 A 的 AR 输出")).not.toBeInTheDocument();
   });
 
-  it("hides the AR output for low-confidence automatic recognition results", async () => {
+  it("shows the AR output for moderately confident automatic recognition results", async () => {
     let emitResult: RecognitionListener = () => undefined;
     const recognizer: StateRecognizer = {
       start: vi.fn(async (onResult) => {
@@ -224,7 +224,7 @@ describe("TestScreen", () => {
     });
 
     act(() => {
-      emitResult({ stateId: "state_a", confidence: 0.2 });
+      emitResult({ stateId: "state_a", confidence: 0.05 });
     });
 
     expect(container.querySelector(".ar-test-overlay")).toBeNull();
@@ -232,10 +232,11 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("自动识别中，未识别到已训练状态。");
 
     act(() => {
-      emitResult({ stateId: "state_a", confidence: 0.82 });
+      emitResult({ stateId: "state_a", confidence: 0.2 });
     });
 
     expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A（20%）");
   });
 
   it("creates a camera recognizer when a trained model is available", async () => {

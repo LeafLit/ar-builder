@@ -17,7 +17,7 @@ const TEST_STATES: TestState[] = [
   { id: "state_a", name: "状态 A" },
   { id: "state_b", name: "状态 B" }
 ];
-const MIN_RECOGNITION_CONFIDENCE = 0.45;
+const MIN_RECOGNITION_CONFIDENCE = 0.15;
 
 type CameraRecognizerFactory = (
   video: HTMLVideoElement,
