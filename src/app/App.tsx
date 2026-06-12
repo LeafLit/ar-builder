@@ -1,6 +1,7 @@
 import { useMemo, useReducer } from "react";
 import { createProjectFromAppState, createProjectSummary } from "./appProjectSnapshot";
 import { appReducer, initialAppState } from "./appState";
+import { createAppTrainer } from "./appTrainer";
 import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
 import { DeviceReadinessPanel } from "../features/device/DeviceReadinessPanel";
@@ -16,22 +17,10 @@ import { TestScreen } from "../features/testing/TestScreen";
 export function App({ projectRepository = createProjectRepository() }: { projectRepository?: ProjectRepository }) {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
   const hasEditableProject = state.assets.length > 0 || state.bindings.length > 0;
-  const trainer = useMemo<ModelTrainer | undefined>(() => {
-    const stateIds = Object.keys(state.sampleCounts);
-    const hasSamples = stateIds.some((stateId) => (state.sampleCounts[stateId] ?? 0) > 0);
-
-    if (!hasSamples) {
-      return undefined;
-    }
-
-    return {
-      async train(projectId) {
-        const { createSampleModelTrainer } = await import("../features/ml/sampleModelTrainer");
-
-        return createSampleModelTrainer({ stateIds }).train(projectId);
-      }
-    };
-  }, [state.sampleCounts]);
+  const trainer = useMemo<ModelTrainer | undefined>(
+    () => createAppTrainer(state.sampleCounts),
+    [state.sampleCounts]
+  );
 
   async function saveCurrentProject() {
     const project = createProjectFromAppState(state, {
