@@ -26,6 +26,33 @@ describe("embeddingClassifier", () => {
     expect(classifier.predict([1, 2, 3])).toBeUndefined();
   });
 
+  it("keeps confidence high when the embedding is clearly closer to one state", () => {
+    const classifier = createEmbeddingClassifier();
+
+    classifier.train([
+      { stateId: "state_a", embedding: [0, 0] },
+      { stateId: "state_b", embedding: [10, 0] }
+    ]);
+
+    const prediction = classifier.predict([3, 0]);
+
+    expect(prediction?.stateId).toBe("state_a");
+    expect(prediction?.confidence).toBeGreaterThan(0.45);
+  });
+
+  it("keeps confidence low when the embedding is between trained states", () => {
+    const classifier = createEmbeddingClassifier();
+
+    classifier.train([
+      { stateId: "state_a", embedding: [0, 0] },
+      { stateId: "state_b", embedding: [10, 0] }
+    ]);
+
+    const prediction = classifier.predict([5, 0]);
+
+    expect(prediction?.confidence).toBeLessThan(0.45);
+  });
+
   it("restores the same nearest-state predictions from a serialized snapshot", () => {
     const classifier = createEmbeddingClassifier();
     classifier.train([

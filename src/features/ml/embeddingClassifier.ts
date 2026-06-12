@@ -75,7 +75,7 @@ function createClassifier(initialCentroids: Centroid[] = []): EmbeddingClassifie
         .sort((a, b) => a.distance - b.distance);
 
       const best = ranked[0];
-      const confidence = 1 / (1 + best.distance);
+      const confidence = calculateConfidence(ranked);
 
       return { stateId: best.stateId, confidence };
     },
@@ -87,6 +87,21 @@ function createClassifier(initialCentroids: Centroid[] = []): EmbeddingClassifie
       };
     }
   };
+}
+
+function calculateConfidence(ranked: { distance: number }[]) {
+  const best = ranked[0];
+  const second = ranked[1];
+
+  if (!second) {
+    return 1 / (1 + best.distance);
+  }
+
+  if (second.distance === 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(1, (second.distance - best.distance) / second.distance));
 }
 
 function cloneCentroids(centroids: Centroid[]): Centroid[] {
