@@ -1,5 +1,9 @@
 import type { AppState } from "./appState";
 import { initialAppState } from "./appState";
+import {
+  restoreRecognitionModel,
+  serializeRecognitionModel
+} from "../features/ml/recognitionModelSnapshot";
 import type { InputState, Project } from "../features/projects/projectTypes";
 import { createId } from "../shared/id";
 
@@ -18,6 +22,7 @@ export function createProjectFromAppState(
   { name, now = () => new Date().toISOString() }: CreateProjectOptions
 ): Project {
   const timestamp = now();
+  const recognitionModel = serializeRecognitionModel(state.recognitionModel);
 
   return {
     id: state.projectId ?? createId("project"),
@@ -29,7 +34,8 @@ export function createProjectFromAppState(
       sampleIds: createSampleIds(projectState.id, state.sampleCounts[projectState.id] ?? 0)
     })),
     assets: state.assets,
-    bindings: state.bindings
+    bindings: state.bindings,
+    ...(recognitionModel ? { recognitionModel } : {})
   };
 }
 
@@ -43,7 +49,8 @@ export function restoreStateFromProject(project: Project): AppState {
       ...Object.fromEntries(project.states.map((state) => [state.id, state.sampleIds.length]))
     },
     assets: project.assets,
-    bindings: project.bindings
+    bindings: project.bindings,
+    recognitionModel: restoreRecognitionModel(project.recognitionModel)
   };
 }
 

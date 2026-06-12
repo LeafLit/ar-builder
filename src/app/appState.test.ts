@@ -56,6 +56,46 @@ describe("appReducer", () => {
     expect(state.assets).toEqual(project.assets);
   });
 
+  it("restores a saved recognition model when loading a project", () => {
+    const project: Project = {
+      id: "project_saved",
+      name: "带模型的项目",
+      createdAt: "2026-06-12T12:00:00.000Z",
+      updatedAt: "2026-06-12T12:30:00.000Z",
+      states: [
+        {
+          id: "state_a",
+          name: "状态 A",
+          order: 0,
+          sampleIds: ["sample_1"]
+        },
+        {
+          id: "state_b",
+          name: "状态 B",
+          order: 1,
+          sampleIds: ["sample_2"]
+        }
+      ],
+      assets: [],
+      bindings: [],
+      recognitionModel: {
+        version: 1,
+        classifier: {
+          kind: "embedding-centroid-v1",
+          centroids: [
+            { stateId: "state_a", vector: [0, 0] },
+            { stateId: "state_b", vector: [1, 1] }
+          ]
+        }
+      }
+    };
+
+    const state = appReducer(initialAppState, { type: "loadProject", project });
+
+    expect(state.recognitionModel?.classifier.predict([1, 1])?.stateId).toBe("state_b");
+    expect(state.recognitionModel?.embedder).toBeDefined();
+  });
+
   it("records captured sample counts by state", () => {
     const state = appReducer(initialAppState, {
       type: "recordSample",

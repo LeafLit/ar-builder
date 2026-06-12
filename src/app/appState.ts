@@ -6,6 +6,7 @@ import type {
   Transform
 } from "../features/projects/projectTypes";
 import type { RecognitionModel } from "../features/ml/classifierTypes";
+import { restoreRecognitionModel } from "../features/ml/recognitionModelSnapshot";
 
 export type AppScreen = "home" | "capture" | "train" | "author" | "test";
 
@@ -64,7 +65,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
         assets: action.project.assets,
         bindings: action.project.bindings,
-        recognitionModel: undefined
+        recognitionModel: restoreRecognitionModel(action.project.recognitionModel)
       };
     case "recordSample":
       return {

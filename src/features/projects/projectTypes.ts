@@ -1,3 +1,5 @@
+import type { SerializedRecognitionModel } from "../ml/classifierTypes";
+
 export type AssetType = "model3d" | "image2d" | "text" | "audio";
 
 export type Transform = {
@@ -68,6 +70,7 @@ export type Project = {
   states: InputState[];
   assets: Asset[];
   bindings: StateBinding[];
+  recognitionModel?: SerializedRecognitionModel;
 };
 
 export type ProjectSummary = {

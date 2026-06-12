@@ -1,6 +1,7 @@
 import { createProjectFromAppState, restoreStateFromProject } from "./appProjectSnapshot";
 import type { AppState } from "./appState";
 import type { Project } from "../features/projects/projectTypes";
+import { createEmbeddingClassifier } from "../features/ml/embeddingClassifier";
 
 describe("appProjectSnapshot", () => {
   it("creates a local project snapshot from the current app state", () => {
@@ -102,6 +103,49 @@ describe("appProjectSnapshot", () => {
         assets: project.assets,
         bindings: []
       })
+    );
+  });
+
+  it("saves and restores a trained recognition model snapshot", () => {
+    const classifier = createEmbeddingClassifier();
+    classifier.train([
+      { stateId: "state_a", embedding: [0, 0] },
+      { stateId: "state_b", embedding: [1, 1] }
+    ]);
+    const state: AppState = {
+      screen: "test",
+      projectId: "project_with_model",
+      sampleCounts: {
+        state_a: 1,
+        state_b: 1
+      },
+      assets: [],
+      bindings: [],
+      recognitionModel: {
+        classifier,
+        embedder: {
+          embed: vi.fn()
+        }
+      }
+    };
+
+    const project = createProjectFromAppState(state, {
+      name: "可继续识别的项目",
+      now: () => "2026-06-12T13:00:00.000Z"
+    });
+
+    expect(project.recognitionModel).toEqual({
+      version: 1,
+      classifier: {
+        kind: "embedding-centroid-v1",
+        centroids: [
+          { stateId: "state_a", vector: [0, 0] },
+          { stateId: "state_b", vector: [1, 1] }
+        ]
+      }
+    });
+    expect(restoreStateFromProject(project).recognitionModel?.classifier.predict([0, 0])?.stateId).toBe(
+      "state_a"
     );
   });
 });

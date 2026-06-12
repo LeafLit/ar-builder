@@ -1,9 +1,16 @@
-import type { Prediction, TrainableClassifier, TrainingExample } from "./classifierTypes";
+import type {
+  SerializableClassifierPredictor,
+  SerializedEmbeddingClassifier,
+  TrainableClassifier,
+  TrainingExample
+} from "./classifierTypes";
 
 type Centroid = {
   stateId: string;
   vector: number[];
 };
+
+export type EmbeddingClassifier = TrainableClassifier & SerializableClassifierPredictor;
 
 function average(vectors: number[][]): number[] {
   const size = vectors[0]?.length ?? 0;
@@ -22,8 +29,22 @@ function distance(a: number[], b: number[]): number {
   return Math.sqrt(a.reduce((sum, value, index) => sum + (value - b[index]) ** 2, 0));
 }
 
-export function createEmbeddingClassifier(): TrainableClassifier {
-  let centroids: Centroid[] = [];
+export function createEmbeddingClassifier(): EmbeddingClassifier {
+  return createClassifier();
+}
+
+export function createEmbeddingClassifierFromSnapshot(
+  snapshot: SerializedEmbeddingClassifier
+): EmbeddingClassifier {
+  if (snapshot.kind !== "embedding-centroid-v1") {
+    throw new Error("Unsupported embedding classifier snapshot.");
+  }
+
+  return createClassifier(snapshot.centroids);
+}
+
+function createClassifier(initialCentroids: Centroid[] = []): EmbeddingClassifier {
+  let centroids: Centroid[] = cloneCentroids(initialCentroids);
 
   return {
     train(examples) {
@@ -57,6 +78,20 @@ export function createEmbeddingClassifier(): TrainableClassifier {
       const confidence = 1 / (1 + best.distance);
 
       return { stateId: best.stateId, confidence };
+    },
+
+    serialize() {
+      return {
+        kind: "embedding-centroid-v1",
+        centroids: cloneCentroids(centroids)
+      };
     }
   };
+}
+
+function cloneCentroids(centroids: Centroid[]): Centroid[] {
+  return centroids.map((centroid) => ({
+    stateId: centroid.stateId,
+    vector: [...centroid.vector]
+  }));
 }

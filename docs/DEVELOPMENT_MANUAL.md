@@ -81,6 +81,18 @@ type Project = {
   states: InputState[];
   assets: Asset[];
   bindings: StateBinding[];
+  recognitionModel?: SerializedRecognitionModel;
+};
+
+type SerializedRecognitionModel = {
+  version: 1;
+  classifier: {
+    kind: "embedding-centroid-v1";
+    centroids: {
+      stateId: string;
+      vector: number[];
+    }[];
+  };
 };
 
 type InputState = {
@@ -172,6 +184,7 @@ type ARAdapter = {
 - 接入 TensorFlow.js。
 - 加载轻量基础模型。
 - 用用户样本训练分类器。
+- 把训练后的轻量分类器快照保存到本地项目。
 - 从摄像头画面实时推理。
 - 显示识别到的状态和置信度。
 
@@ -212,6 +225,7 @@ type ARAdapter = {
 - 用户可以把不同输出绑定到不同状态。
 - 用户可以调整每个文字或图片输出在相机画面中的位置和大小。
 - 用户可以保存当前项目，并从首页继续编辑已保存项目。
+- 保存前训练成功的项目，重新打开后可以继续启动真实相机识别。
 - 识别状态变化时，输出也会变化。
 - 用户拒绝摄像头权限时，App 能给出清晰提示。
 - 当前设备不支持 WebXR 时，App 能自动降级。
@@ -222,6 +236,7 @@ type ARAdapter = {
 - 本地开发可以用 localhost，但手机测试可能需要本地 HTTPS、局域网访问或部署预览地址。
 - 浏览器端机器学习在旧手机上可能较慢。第一版应先使用较小图片尺寸和适中的样本数量。
 - 训练样本质量很重要。界面应该提醒用户尽量覆盖不同光线、角度和背景。
+- 本机项目保存在当前浏览器的 IndexedDB 中，包含素材、绑定和轻量识别模型快照；换设备、换浏览器或清除站点数据后不会自动保留。
 - 第一版定位是快速原型工具，不是工业级计算机视觉系统。
 
 ## 10. 未来工程扩展点
