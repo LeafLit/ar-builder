@@ -1,4 +1,9 @@
-import type { Asset, StateBinding, Transform } from "../features/projects/projectTypes";
+import type {
+  Asset,
+  StateBinding,
+  TextOutputDraft,
+  Transform
+} from "../features/projects/projectTypes";
 import type { RecognitionModel } from "../features/ml/classifierTypes";
 
 export type AppScreen = "home" | "capture" | "train" | "author" | "test";
@@ -16,7 +21,7 @@ export type AppAction =
   | { type: "goTo"; screen: AppScreen }
   | { type: "selectProject"; projectId: string }
   | { type: "recordSample"; stateId: string; count: number }
-  | { type: "saveTextOutputs"; outputs: Record<string, string> }
+  | { type: "saveTextOutputs"; outputs: Record<string, string | TextOutputDraft> }
   | { type: "storeRecognitionModel"; model: RecognitionModel };
 
 const DEFAULT_TEXT_TRANSFORM: Transform = {
@@ -56,12 +61,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     case "saveTextOutputs": {
       const stateIds = Object.keys(action.outputs);
+      const normalizedOutputs = Object.fromEntries(
+        stateIds.map((stateId) => [stateId, normalizeTextOutput(action.outputs[stateId])])
+      );
       const textAssetIds = new Set(stateIds.map((stateId) => `asset_text_${stateId}`));
       const textAssets: Asset[] = stateIds.map((stateId) => ({
         id: `asset_text_${stateId}`,
         type: "text",
         name: `${stateId} 文字`,
-        content: action.outputs[stateId].trim()
+        content: normalizedOutputs[stateId].content.trim()
       }));
       const textBindings: StateBinding[] = stateIds.map((stateId) => ({
         id: `binding_${stateId}`,
@@ -69,7 +77,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         action: {
           type: "show",
           assetId: `asset_text_${stateId}`,
-          transform: DEFAULT_TEXT_TRANSFORM,
+          transform: normalizedOutputs[stateId].transform,
           visible: true
         }
       }));
@@ -85,4 +93,26 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     default:
       return state;
   }
+}
+
+function normalizeTextOutput(output: string | TextOutputDraft): TextOutputDraft {
+  if (typeof output === "string") {
+    return {
+      content: output,
+      transform: cloneTransform(DEFAULT_TEXT_TRANSFORM)
+    };
+  }
+
+  return {
+    content: output.content,
+    transform: cloneTransform(output.transform)
+  };
+}
+
+function cloneTransform(transform: Transform): Transform {
+  return {
+    position: [...transform.position],
+    rotation: [...transform.rotation],
+    scale: [...transform.scale]
+  };
 }

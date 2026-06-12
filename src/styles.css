@@ -289,6 +289,28 @@ textarea {
   outline: 3px solid #ccfbf1;
 }
 
+.anchor-controls {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.range-field {
+  display: grid;
+  gap: 6px;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.range-field input {
+  width: 100%;
+  accent-color: #0f766e;
+}
+
 .ar-test-stage {
   min-height: 320px;
   border: 1px solid #cbd5e1;
@@ -317,9 +339,10 @@ textarea {
 
 .ar-test-overlay {
   position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 22px;
+  left: var(--anchor-x, 50%);
+  top: var(--anchor-y, 74%);
+  width: max-content;
+  max-width: min(86%, 520px);
   min-height: 56px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
@@ -328,8 +351,11 @@ textarea {
   place-items: center;
   color: #ffffff;
   text-align: center;
+  overflow-wrap: anywhere;
   background: rgba(15, 23, 42, 0.76);
   backdrop-filter: blur(8px);
+  transform: translate(-50%, -50%) scale(var(--anchor-scale, 1));
+  transform-origin: center;
 }
 
 .action-row {

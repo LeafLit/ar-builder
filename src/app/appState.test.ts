@@ -52,8 +52,22 @@ describe("appReducer", () => {
     const state = appReducer(initialAppState, {
       type: "saveTextOutputs",
       outputs: {
-        state_a: "左边出现提示",
-        state_b: "右边出现提示"
+        state_a: {
+          content: "左边出现提示",
+          transform: {
+            position: [-0.5, 0.25, 0],
+            rotation: [0, 0, 0],
+            scale: [1.25, 1.25, 1]
+          }
+        },
+        state_b: {
+          content: "右边出现提示",
+          transform: {
+            position: [0.5, -0.25, 0],
+            rotation: [0, 0, 0],
+            scale: [0.8, 0.8, 1]
+          }
+        }
       }
     });
 
@@ -76,7 +90,12 @@ describe("appReducer", () => {
         action: expect.objectContaining({
           type: "show",
           assetId: "asset_text_state_a",
-          visible: true
+          visible: true,
+          transform: {
+            position: [-0.5, 0.25, 0],
+            rotation: [0, 0, 0],
+            scale: [1.25, 1.25, 1]
+          }
         })
       }),
       expect.objectContaining({
@@ -85,7 +104,12 @@ describe("appReducer", () => {
         action: expect.objectContaining({
           type: "show",
           assetId: "asset_text_state_b",
-          visible: true
+          visible: true,
+          transform: {
+            position: [0.5, -0.25, 0],
+            rotation: [0, 0, 0],
+            scale: [0.8, 0.8, 1]
+          }
         })
       })
     ]);

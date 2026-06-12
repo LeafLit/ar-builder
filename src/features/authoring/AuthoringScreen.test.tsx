@@ -24,11 +24,34 @@ describe("AuthoringScreen", () => {
     fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
       target: { value: "靠近右边时显示这句话" }
     });
+    fireEvent.change(screen.getByLabelText("状态 A 的横向位置"), {
+      target: { value: "-50" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的纵向位置"), {
+      target: { value: "25" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的大小"), {
+      target: { value: "125" }
+    });
     fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
 
     expect(onSaveTextOutputs).toHaveBeenCalledWith({
-      state_a: "靠近左边时显示这句话",
-      state_b: "靠近右边时显示这句话"
+      state_a: {
+        content: "靠近左边时显示这句话",
+        transform: {
+          position: [-0.5, 0.25, 0],
+          rotation: [0, 0, 0],
+          scale: [1.25, 1.25, 1]
+        }
+      },
+      state_b: {
+        content: "靠近右边时显示这句话",
+        transform: {
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1]
+        }
+      }
     });
     expect(screen.getByText("已保存 2 个文字输出。")).toBeInTheDocument();
 
@@ -72,6 +95,7 @@ describe("AuthoringScreen", () => {
     );
 
     expect(screen.getByLabelText("状态 A 的 AR 文字")).toHaveValue("已经保存的 A");
+    expect(screen.getByLabelText("状态 A 的大小")).toHaveValue("100");
     expect(screen.getByRole("button", { name: "下一步：测试" })).toBeEnabled();
   });
 });

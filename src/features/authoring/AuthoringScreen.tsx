@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Asset, StateBinding } from "../projects/projectTypes";
+import type { Asset, StateBinding, TextOutputDraft, Transform } from "../projects/projectTypes";
 
 type AuthoringState = {
   id: string;
@@ -11,27 +11,101 @@ const AUTHORING_STATES: AuthoringState[] = [
   { id: "state_b", name: "状态 B" }
 ];
 
+const DEFAULT_TEXT_TRANSFORM: Transform = {
+  position: [0, 0, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1]
+};
+
 export function AuthoringScreen(props: {
   assets: Asset[];
   bindings: StateBinding[];
-  onSaveTextOutputs: (outputs: Record<string, string>) => void;
+  onSaveTextOutputs: (outputs: Record<string, TextOutputDraft>) => void;
   onNext: () => void;
 }) {
-  const [outputs, setOutputs] = useState<Record<string, string>>(() =>
+  const [outputs, setOutputs] = useState<Record<string, TextOutputDraft>>(() =>
     Object.fromEntries(
-      AUTHORING_STATES.map((state) => [state.id, getTextOutput(state.id, props.assets, props.bindings)])
+      AUTHORING_STATES.map((state) => [
+        state.id,
+        getTextOutputDraft(state.id, props.assets, props.bindings)
+      ])
     )
   );
   const [saved, setSaved] = useState(props.bindings.length > 0);
-  const filledOutputCount = AUTHORING_STATES.filter((state) => outputs[state.id].trim()).length;
+  const filledOutputCount = AUTHORING_STATES.filter((state) =>
+    outputs[state.id].content.trim()
+  ).length;
   const canSave = filledOutputCount === AUTHORING_STATES.length;
 
   function saveBindings() {
     const trimmedOutputs = Object.fromEntries(
-      AUTHORING_STATES.map((state) => [state.id, outputs[state.id].trim()])
+      AUTHORING_STATES.map((state) => [
+        state.id,
+        {
+          ...outputs[state.id],
+          content: outputs[state.id].content.trim()
+        }
+      ])
     );
     props.onSaveTextOutputs(trimmedOutputs);
     setSaved(true);
+  }
+
+  function updateTextOutput(stateId: string, content: string) {
+    setOutputs((current) => ({
+      ...current,
+      [stateId]: {
+        ...current[stateId],
+        content
+      }
+    }));
+  }
+
+  function updateAnchor(stateId: string, field: "x" | "y" | "scale", value: string) {
+    const numericValue = Number(value);
+
+    setOutputs((current) => {
+      const currentOutput = current[stateId];
+      const transform = currentOutput.transform;
+
+      if (field === "x") {
+        return {
+          ...current,
+          [stateId]: {
+            ...currentOutput,
+            transform: {
+              ...transform,
+              position: [numericValue / 100, transform.position[1], transform.position[2]]
+            }
+          }
+        };
+      }
+
+      if (field === "y") {
+        return {
+          ...current,
+          [stateId]: {
+            ...currentOutput,
+            transform: {
+              ...transform,
+              position: [transform.position[0], numericValue / 100, transform.position[2]]
+            }
+          }
+        };
+      }
+
+      const scale = numericValue / 100;
+      return {
+        ...current,
+        [stateId]: {
+          ...currentOutput,
+          transform: {
+            ...transform,
+            scale: [scale, scale, transform.scale[2]]
+          }
+        }
+      };
+    });
   }
 
   return (
@@ -44,23 +118,64 @@ export function AuthoringScreen(props: {
       </div>
 
       <div className="binding-list">
-        {AUTHORING_STATES.map((state) => (
-          <label className="binding-card stack" key={state.id}>
-            <span>{state.name} 的 AR 文字</span>
-            <textarea
-              aria-label={`${state.name} 的 AR 文字`}
-              onChange={(event) =>
-                setOutputs((current) => ({
-                  ...current,
-                  [state.id]: event.target.value
-                }))
-              }
-              placeholder={`识别到${state.name}时显示的内容`}
-              rows={4}
-              value={outputs[state.id]}
-            />
-          </label>
-        ))}
+        {AUTHORING_STATES.map((state) => {
+          const output = outputs[state.id];
+          const anchorValues = createAnchorControlValues(output.transform);
+
+          return (
+            <div className="binding-card stack" key={state.id}>
+              <label className="stack compact-stack">
+                <span>{state.name} 的 AR 文字</span>
+                <textarea
+                  aria-label={`${state.name} 的 AR 文字`}
+                  onChange={(event) => updateTextOutput(state.id, event.target.value)}
+                  placeholder={`识别到${state.name}时显示的内容`}
+                  rows={4}
+                  value={output.content}
+                />
+              </label>
+
+              <div className="anchor-controls" aria-label={`${state.name} 的屏幕锚点`}>
+                <label className="range-field">
+                  <span>横向位置：{anchorValues.x}%</span>
+                  <input
+                    aria-label={`${state.name} 的横向位置`}
+                    max="100"
+                    min="-100"
+                    onChange={(event) => updateAnchor(state.id, "x", event.target.value)}
+                    step="5"
+                    type="range"
+                    value={anchorValues.x}
+                  />
+                </label>
+                <label className="range-field">
+                  <span>纵向位置：{anchorValues.y}%</span>
+                  <input
+                    aria-label={`${state.name} 的纵向位置`}
+                    max="100"
+                    min="-100"
+                    onChange={(event) => updateAnchor(state.id, "y", event.target.value)}
+                    step="5"
+                    type="range"
+                    value={anchorValues.y}
+                  />
+                </label>
+                <label className="range-field">
+                  <span>大小：{anchorValues.scale}%</span>
+                  <input
+                    aria-label={`${state.name} 的大小`}
+                    max="200"
+                    min="50"
+                    onChange={(event) => updateAnchor(state.id, "scale", event.target.value)}
+                    step="5"
+                    type="range"
+                    value={anchorValues.scale}
+                  />
+                </label>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="action-row">
@@ -79,14 +194,40 @@ export function AuthoringScreen(props: {
   );
 }
 
-function getTextOutput(stateId: string, assets: Asset[], bindings: StateBinding[]) {
+function getTextOutputDraft(
+  stateId: string,
+  assets: Asset[],
+  bindings: StateBinding[]
+): TextOutputDraft {
   const binding = bindings.find((item) => item.stateId === stateId);
 
-  if (!binding || !("assetId" in binding.action)) {
-    return "";
+  if (!binding || binding.action.type !== "show") {
+    return {
+      content: "",
+      transform: cloneTransform(DEFAULT_TEXT_TRANSFORM)
+    };
   }
 
   const asset = assets.find((item) => item.id === binding.action.assetId && item.type === "text");
 
-  return asset?.content ?? "";
+  return {
+    content: asset?.content ?? "",
+    transform: cloneTransform(binding.action.transform)
+  };
+}
+
+function createAnchorControlValues(transform: Transform) {
+  return {
+    x: Math.round(transform.position[0] * 100).toString(),
+    y: Math.round(transform.position[1] * 100).toString(),
+    scale: Math.round(transform.scale[0] * 100).toString()
+  };
+}
+
+function cloneTransform(transform: Transform): Transform {
+  return {
+    position: [...transform.position],
+    rotation: [...transform.rotation],
+    scale: [...transform.scale]
+  };
 }

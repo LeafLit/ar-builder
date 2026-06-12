@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createScreenAnchorPlacement } from "../ar/screenAnchor";
 import { createRuleEngine } from "../authoring/ruleEngine";
 import type { RecognitionModel } from "../ml/classifierTypes";
-import type { Asset, StateBinding } from "../projects/projectTypes";
+import type { Asset, StateBinding, Transform } from "../projects/projectTypes";
 import { createCameraStateRecognizer } from "./cameraStateRecognizer";
 import {
   createSequenceRecognizer,
@@ -49,6 +50,7 @@ export function TestScreen(props: {
     ? resolveTextOutput(detectedState, props.assets, props.bindings)
     : undefined;
   const previewContent = output?.content ?? "等待 AR 输出。";
+  const anchorStyle = output ? createAnchorStyle(output.transform) : undefined;
   const statusText = createStatusText({
     confidence,
     detectedState,
@@ -123,7 +125,7 @@ export function TestScreen(props: {
           ref={videoRef}
         />
         <div className="ar-test-camera">相机画面预览</div>
-        <div className="ar-test-overlay" aria-live="polite">
+        <div className="ar-test-overlay" aria-live="polite" style={anchorStyle}>
           {previewContent}
         </div>
       </div>
@@ -229,8 +231,11 @@ function formatConfidence(confidence: number | undefined) {
 function resolveTextOutput(state: TestState, assets: Asset[], bindings: StateBinding[]) {
   const resolved = createRuleEngine().resolve(state.id, bindings);
 
-  if (!resolved || !("assetId" in resolved.action)) {
-    return { content: `未找到${state.name} 的输出绑定。` };
+  if (!resolved || resolved.action.type !== "show") {
+    return {
+      content: `未找到${state.name} 的输出绑定。`,
+      transform: DEFAULT_OUTPUT_TRANSFORM
+    };
   }
 
   const asset = assets.find(
@@ -238,8 +243,30 @@ function resolveTextOutput(state: TestState, assets: Asset[], bindings: StateBin
   );
 
   if (!asset?.content) {
-    return { content: `${state.name} 的文字素材为空。` };
+    return {
+      content: `${state.name} 的文字素材为空。`,
+      transform: resolved.action.transform
+    };
   }
 
-  return { content: asset.content };
+  return {
+    content: asset.content,
+    transform: resolved.action.transform
+  };
+}
+
+const DEFAULT_OUTPUT_TRANSFORM: Transform = {
+  position: [0, 0, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1]
+};
+
+function createAnchorStyle(transform: Transform): CSSProperties {
+  const placement = createScreenAnchorPlacement(transform);
+
+  return {
+    "--anchor-x": `${placement.xPercent}%`,
+    "--anchor-y": `${placement.yPercent}%`,
+    "--anchor-scale": `${placement.scale}`
+  } as CSSProperties;
 }

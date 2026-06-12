@@ -62,6 +62,36 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A");
   });
 
+  it("places the AR output at the saved screen anchor", () => {
+    const anchoredBindings: StateBinding[] = [
+      {
+        id: "binding_state_b",
+        stateId: "state_b",
+        action: {
+          type: "show",
+          assetId: "asset_text_state_b",
+          visible: true,
+          transform: {
+            position: [0.5, -0.5, 0],
+            rotation: [0, 0, 0],
+            scale: [1.35, 1.35, 1]
+          }
+        }
+      }
+    ];
+
+    render(<TestScreen assets={assets} bindings={anchoredBindings} onBackHome={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 B" }));
+
+    const overlay = screen.getByText("状态 B 的 AR 输出").closest(".ar-test-overlay");
+    expect(overlay).toHaveStyle({
+      "--anchor-x": "75%",
+      "--anchor-y": "25%",
+      "--anchor-scale": "1.35"
+    });
+  });
+
   it("shows an empty-state message when a state has no binding", () => {
     render(<TestScreen assets={[]} bindings={[]} onBackHome={vi.fn()} />);
 

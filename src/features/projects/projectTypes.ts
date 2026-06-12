@@ -6,6 +6,11 @@ export type Transform = {
   scale: [number, number, number];
 };
 
+export type TextOutputDraft = {
+  content: string;
+  transform: Transform;
+};
+
 export type InputState = {
   id: string;
   name: string;
