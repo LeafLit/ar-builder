@@ -239,6 +239,50 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A（20%）");
   });
 
+  it("lets users tune recognition sensitivity while automatic recognition is running", async () => {
+    let emitResult: RecognitionListener = () => undefined;
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async (onResult) => {
+        emitResult = onResult;
+        return { stop: vi.fn() };
+      })
+    };
+    const { container } = render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(recognizer.start).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.1 });
+    });
+
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("识别灵敏度"), {
+      target: { value: "100" }
+    });
+
+    expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+    expect(screen.getByText("识别灵敏度：100%")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("识别灵敏度"), {
+      target: { value: "50" }
+    });
+
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
+    expect(screen.getByText("识别灵敏度：50%")).toBeInTheDocument();
+  });
+
   it("creates a camera recognizer when a trained model is available", async () => {
     const stop = vi.fn();
     const recognizer: StateRecognizer = {

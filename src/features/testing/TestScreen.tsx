@@ -17,7 +17,10 @@ const TEST_STATES: TestState[] = [
   { id: "state_a", name: "状态 A" },
   { id: "state_b", name: "状态 B" }
 ];
-const MIN_RECOGNITION_CONFIDENCE = 0.15;
+const DEFAULT_RECOGNITION_SENSITIVITY = 85;
+const MIN_RECOGNITION_SENSITIVITY = 50;
+const MAX_RECOGNITION_SENSITIVITY = 100;
+const SENSITIVITY_STEP = 5;
 
 type CameraRecognizerFactory = (
   video: HTMLVideoElement,
@@ -36,16 +39,23 @@ export function TestScreen(props: {
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
+  const [recognitionSensitivity, setRecognitionSensitivity] = useState(
+    DEFAULT_RECOGNITION_SENSITIVITY
+  );
   const [recognitionPhase, setRecognitionPhase] = useState<RecognitionPhase>("idle");
   const recognitionStartingOrRunning =
     recognitionPhase === "starting" || recognitionPhase === "running";
-  const output = detectedState
-    ? resolveStateOutput(detectedState, props.assets, props.bindings)
+  const recognitionThreshold = createRecognitionThreshold(recognitionSensitivity);
+  const acceptedDetectedState = isRecognitionAccepted(confidence, recognitionThreshold)
+    ? detectedState
+    : undefined;
+  const output = acceptedDetectedState
+    ? resolveStateOutput(acceptedDetectedState, props.assets, props.bindings)
     : undefined;
   const anchorStyle = output ? createAnchorStyle(output.transform) : undefined;
   const statusText = createStatusText({
     confidence,
-    detectedState,
+    detectedState: acceptedDetectedState,
     recognitionPhase
   });
 
@@ -72,12 +82,6 @@ export function TestScreen(props: {
         video: videoRef.current
       });
       const session = await recognizer.start((prediction) => {
-        if (prediction.confidence < MIN_RECOGNITION_CONFIDENCE) {
-          setDetectedState(undefined);
-          setConfidence(prediction.confidence);
-          return;
-        }
-
         const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
           id: prediction.stateId,
           name: prediction.stateId
@@ -168,6 +172,19 @@ export function TestScreen(props: {
         </button>
       </div>
 
+      <label className="range-field">
+        <span>识别灵敏度：{recognitionSensitivity}%</span>
+        <input
+          aria-label="识别灵敏度"
+          max={MAX_RECOGNITION_SENSITIVITY}
+          min={MIN_RECOGNITION_SENSITIVITY}
+          onChange={(event) => setRecognitionSensitivity(Number(event.currentTarget.value))}
+          step={SENSITIVITY_STEP}
+          type="range"
+          value={recognitionSensitivity}
+        />
+      </label>
+
       <p className="muted" role="status">
         {statusText}
       </p>
@@ -205,6 +222,14 @@ function createStatusText(input: {
   }
 
   return "等待识别状态。";
+}
+
+function createRecognitionThreshold(sensitivity: number) {
+  return Math.max(0.03, (100 - sensitivity) / 100);
+}
+
+function isRecognitionAccepted(confidence: number | undefined, threshold: number) {
+  return confidence === undefined || confidence >= threshold;
 }
 
 function createActiveRecognizer(input: {
