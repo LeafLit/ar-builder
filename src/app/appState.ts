@@ -1,12 +1,14 @@
 import type {
   Asset,
   Project,
+  ProjectSettings,
   StateBinding,
   StateOutputDraft,
   Transform
 } from "../features/projects/projectTypes";
 import type { RecognitionModel } from "../features/ml/classifierTypes";
 import { restoreRecognitionModel } from "../features/ml/recognitionModelSnapshot";
+import { normalizeProjectSettings } from "../features/projects/projectTypes";
 
 export type AppScreen = "home" | "capture" | "train" | "author" | "test";
 
@@ -17,6 +19,7 @@ export type AppState = {
   assets: Asset[];
   bindings: StateBinding[];
   recognitionModel?: RecognitionModel;
+  settings: ProjectSettings;
 };
 
 export type AppAction =
@@ -25,6 +28,7 @@ export type AppAction =
   | { type: "recordSample"; stateId: string; count: number }
   | { type: "saveTextOutputs"; outputs: Record<string, string | StateOutputDraft> }
   | { type: "storeRecognitionModel"; model: RecognitionModel }
+  | { type: "updateRecognitionSensitivity"; recognitionSensitivity: number }
   | { type: "loadProject"; project: Project };
 
 const DEFAULT_TEXT_TRANSFORM: Transform = {
@@ -40,7 +44,8 @@ export const initialAppState: AppState = {
     state_b: 0
   },
   assets: [],
-  bindings: []
+  bindings: [],
+  settings: normalizeProjectSettings()
 };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -65,7 +70,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
         assets: action.project.assets,
         bindings: action.project.bindings,
-        recognitionModel: restoreRecognitionModel(action.project.recognitionModel)
+        recognitionModel: restoreRecognitionModel(action.project.recognitionModel),
+        settings: normalizeProjectSettings(action.project.settings)
       };
     case "recordSample":
       return {
@@ -79,6 +85,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         recognitionModel: action.model
+      };
+    case "updateRecognitionSensitivity":
+      return {
+        ...state,
+        settings: normalizeProjectSettings({
+          ...state.settings,
+          recognitionSensitivity: action.recognitionSensitivity
+        })
       };
     case "saveTextOutputs": {
       const stateIds = Object.keys(action.outputs);

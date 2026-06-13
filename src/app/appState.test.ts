@@ -20,6 +20,12 @@ describe("appReducer", () => {
     expect(state.projectId).toBe("project_1");
   });
 
+  it("starts with the default recognition sensitivity setting", () => {
+    expect(initialAppState.settings).toEqual({
+      recognitionSensitivity: 85
+    });
+  });
+
   it("loads a saved project for editing", () => {
     const project: Project = {
       id: "project_saved",
@@ -54,6 +60,41 @@ describe("appReducer", () => {
       state_b: 0
     });
     expect(state.assets).toEqual(project.assets);
+  });
+
+  it("restores recognition sensitivity settings when loading a project", () => {
+    const project: Project = {
+      id: "project_1",
+      name: "sensitivity project",
+      createdAt: "2026-06-13T00:00:00.000Z",
+      updatedAt: "2026-06-13T00:00:00.000Z",
+      states: [],
+      assets: [],
+      bindings: [],
+      settings: {
+        recognitionSensitivity: 100
+      }
+    };
+
+    const state = appReducer(initialAppState, { type: "loadProject", project });
+
+    expect(state.settings.recognitionSensitivity).toBe(100);
+  });
+
+  it("falls back to the default recognition sensitivity when loading an old project", () => {
+    const project: Project = {
+      id: "project_1",
+      name: "old project",
+      createdAt: "2026-06-13T00:00:00.000Z",
+      updatedAt: "2026-06-13T00:00:00.000Z",
+      states: [],
+      assets: [],
+      bindings: []
+    };
+
+    const state = appReducer(initialAppState, { type: "loadProject", project });
+
+    expect(state.settings.recognitionSensitivity).toBe(85);
   });
 
   it("restores a saved recognition model when loading a project", () => {
@@ -123,6 +164,15 @@ describe("appReducer", () => {
     });
 
     expect(state.recognitionModel).toBe(model);
+  });
+
+  it("updates recognition sensitivity settings", () => {
+    const state = appReducer(initialAppState, {
+      type: "updateRecognitionSensitivity",
+      recognitionSensitivity: 95
+    });
+
+    expect(state.settings.recognitionSensitivity).toBe(95);
   });
 
   it("stores text outputs as assets and state bindings", () => {

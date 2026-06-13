@@ -2,6 +2,27 @@ import type { SerializedRecognitionModel } from "../ml/classifierTypes";
 
 export type AssetType = "model3d" | "image2d" | "text" | "audio";
 
+export const DEFAULT_RECOGNITION_SENSITIVITY = 85;
+export const MIN_RECOGNITION_SENSITIVITY = 50;
+export const MAX_RECOGNITION_SENSITIVITY = 100;
+
+export type ProjectSettings = {
+  recognitionSensitivity: number;
+};
+
+export function normalizeProjectSettings(settings?: Partial<ProjectSettings>): ProjectSettings {
+  const recognitionSensitivity = settings?.recognitionSensitivity;
+
+  return {
+    recognitionSensitivity:
+      Number.isFinite(recognitionSensitivity) &&
+      recognitionSensitivity >= MIN_RECOGNITION_SENSITIVITY &&
+      recognitionSensitivity <= MAX_RECOGNITION_SENSITIVITY
+        ? recognitionSensitivity
+        : DEFAULT_RECOGNITION_SENSITIVITY
+  };
+}
+
 export type Transform = {
   position: [number, number, number];
   rotation: [number, number, number];
@@ -71,6 +92,7 @@ export type Project = {
   assets: Asset[];
   bindings: StateBinding[];
   recognitionModel?: SerializedRecognitionModel;
+  settings?: ProjectSettings;
 };
 
 export type ProjectSummary = {
