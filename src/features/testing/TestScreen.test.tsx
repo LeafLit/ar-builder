@@ -283,6 +283,40 @@ describe("TestScreen", () => {
     expect(screen.getByText("识别灵敏度：50%")).toBeInTheDocument();
   });
 
+  it("shows the recognition sensitivity passed by the app", () => {
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognitionSensitivity={95}
+        onRecognitionSensitivityChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("识别灵敏度：95%")).toBeInTheDocument();
+  });
+
+  it("notifies the app when recognition sensitivity changes", () => {
+    const onRecognitionSensitivityChange = vi.fn();
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognitionSensitivity={85}
+        onRecognitionSensitivityChange={onRecognitionSensitivityChange}
+      />
+    );
+
+    fireEvent.change(screen.getByRole("slider", { name: "识别灵敏度" }), {
+      target: { value: "100" }
+    });
+
+    expect(onRecognitionSensitivityChange).toHaveBeenCalledWith(100);
+  });
+
   it("creates a camera recognizer when a trained model is available", async () => {
     const stop = vi.fn();
     const recognizer: StateRecognizer = {

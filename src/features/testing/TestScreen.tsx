@@ -3,6 +3,11 @@ import { createScreenAnchorPlacement } from "../ar/screenAnchor";
 import { createRuleEngine } from "../authoring/ruleEngine";
 import type { RecognitionModel } from "../ml/classifierTypes";
 import type { Asset, StateBinding, Transform } from "../projects/projectTypes";
+import {
+  DEFAULT_RECOGNITION_SENSITIVITY,
+  MAX_RECOGNITION_SENSITIVITY,
+  MIN_RECOGNITION_SENSITIVITY
+} from "../projects/projectTypes";
 import { createCameraStateRecognizer } from "./cameraStateRecognizer";
 import { type RecognitionSession, type StateRecognizer } from "./stateRecognizer";
 
@@ -17,9 +22,6 @@ const TEST_STATES: TestState[] = [
   { id: "state_a", name: "状态 A" },
   { id: "state_b", name: "状态 B" }
 ];
-const DEFAULT_RECOGNITION_SENSITIVITY = 85;
-const MIN_RECOGNITION_SENSITIVITY = 50;
-const MAX_RECOGNITION_SENSITIVITY = 100;
 const SENSITIVITY_STEP = 5;
 
 type CameraRecognizerFactory = (
@@ -33,16 +35,20 @@ export function TestScreen(props: {
   recognitionModel?: RecognitionModel;
   recognizer?: StateRecognizer;
   createCameraRecognizer?: CameraRecognizerFactory;
+  recognitionSensitivity?: number;
+  onRecognitionSensitivityChange?: (recognitionSensitivity: number) => void;
   onBackHome: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
-  const [recognitionSensitivity, setRecognitionSensitivity] = useState(
+  const [localRecognitionSensitivity, setLocalRecognitionSensitivity] = useState(
     DEFAULT_RECOGNITION_SENSITIVITY
   );
   const [recognitionPhase, setRecognitionPhase] = useState<RecognitionPhase>("idle");
+  const recognitionSensitivity =
+    props.recognitionSensitivity ?? localRecognitionSensitivity;
   const recognitionStartingOrRunning =
     recognitionPhase === "starting" || recognitionPhase === "running";
   const recognitionThreshold = createRecognitionThreshold(recognitionSensitivity);
@@ -109,6 +115,14 @@ export function TestScreen(props: {
     setRecognitionPhase("idle");
     setDetectedState(state);
     setConfidence(undefined);
+  }
+
+  function changeRecognitionSensitivity(nextValue: number) {
+    if (props.recognitionSensitivity === undefined) {
+      setLocalRecognitionSensitivity(nextValue);
+    }
+
+    props.onRecognitionSensitivityChange?.(nextValue);
   }
 
   return (
@@ -178,7 +192,7 @@ export function TestScreen(props: {
           aria-label="识别灵敏度"
           max={MAX_RECOGNITION_SENSITIVITY}
           min={MIN_RECOGNITION_SENSITIVITY}
-          onChange={(event) => setRecognitionSensitivity(Number(event.currentTarget.value))}
+          onChange={(event) => changeRecognitionSensitivity(Number(event.currentTarget.value))}
           step={SENSITIVITY_STEP}
           type="range"
           value={recognitionSensitivity}
