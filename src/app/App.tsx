@@ -125,6 +125,10 @@ export function App({ projectRepository = createProjectRepository() }: { project
               assets={state.assets}
               bindings={state.bindings}
               recognitionModel={state.recognitionModel}
+              recognitionSensitivity={state.settings.recognitionSensitivity}
+              onRecognitionSensitivityChange={(recognitionSensitivity) =>
+                dispatch({ type: "updateRecognitionSensitivity", recognitionSensitivity })
+              }
               onBackHome={() => dispatch({ type: "goTo", screen: "home" })}
             />
             <button className="secondary-button" onClick={saveCurrentProject} type="button">

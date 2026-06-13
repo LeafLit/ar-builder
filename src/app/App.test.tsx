@@ -84,4 +84,50 @@ describe("App", () => {
 
     expect(await screen.findByDisplayValue("保存后还能编辑")).toBeInTheDocument();
   });
+
+  it("saves and reopens project recognition sensitivity", async () => {
+    const savedProjects: Project[] = [];
+    const repository: ProjectRepository = {
+      list: vi.fn(async () => savedProjects),
+      get: vi.fn(async (id) => savedProjects.find((project) => project.id === id)),
+      save: vi.fn(async (project) => {
+        savedProjects.splice(0, savedProjects.length, project);
+      }),
+      delete: vi.fn()
+    };
+
+    render(<App projectRepository={repository} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "新建项目" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步：训练" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始训练" }));
+    await waitFor(() => screen.getByText("训练完成：2 个状态，0 个样本。"));
+    fireEvent.click(screen.getByRole("button", { name: "下一步：编辑" }));
+
+    fireEvent.change(screen.getByLabelText("状态 A 的 AR 文字"), {
+      target: { value: "保存灵敏度 A" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "保存灵敏度 B" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步：测试" }));
+
+    fireEvent.change(screen.getByRole("slider", { name: "识别灵敏度" }), {
+      target: { value: "100" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存项目" }));
+
+    await waitFor(() => {
+      expect(repository.save).toHaveBeenCalledTimes(1);
+    });
+    expect(savedProjects[0].settings?.recognitionSensitivity).toBe(100);
+
+    fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+    expect(await screen.findByText("AR Builder 本机项目")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "继续编辑 AR Builder 本机项目" }));
+    fireEvent.click(await screen.findByRole("button", { name: "下一步：测试" }));
+
+    expect(screen.getByText("识别灵敏度：100%")).toBeInTheDocument();
+  });
 });
