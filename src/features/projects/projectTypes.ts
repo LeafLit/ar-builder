@@ -15,6 +15,7 @@ export function normalizeProjectSettings(settings?: Partial<ProjectSettings>): P
 
   return {
     recognitionSensitivity:
+      typeof recognitionSensitivity === "number" &&
       Number.isFinite(recognitionSensitivity) &&
       recognitionSensitivity >= MIN_RECOGNITION_SENSITIVITY &&
       recognitionSensitivity <= MAX_RECOGNITION_SENSITIVITY
