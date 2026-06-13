@@ -35,7 +35,10 @@ describe("appProjectSnapshot", () => {
             }
           }
         }
-      ]
+      ],
+      settings: {
+        recognitionSensitivity: 85
+      }
     };
 
     const project = createProjectFromAppState(state, {
@@ -63,7 +66,35 @@ describe("appProjectSnapshot", () => {
         }
       ],
       assets: state.assets,
-      bindings: state.bindings
+      bindings: state.bindings,
+      settings: {
+        recognitionSensitivity: 85
+      }
+    });
+  });
+
+  it("saves recognition sensitivity settings in project snapshots", () => {
+    const state: AppState = {
+      screen: "test",
+      projectId: "project_existing",
+      sampleCounts: {
+        state_a: 0,
+        state_b: 0
+      },
+      assets: [],
+      bindings: [],
+      settings: {
+        recognitionSensitivity: 100
+      }
+    };
+
+    const project = createProjectFromAppState(state, {
+      name: "sensitivity project",
+      now: () => "2026-06-13T00:00:00.000Z"
+    });
+
+    expect(project.settings).toEqual({
+      recognitionSensitivity: 100
     });
   });
 
@@ -106,6 +137,37 @@ describe("appProjectSnapshot", () => {
     );
   });
 
+  it("restores recognition sensitivity settings from project snapshots", () => {
+    const project: Project = {
+      id: "project_1",
+      name: "restore sensitivity project",
+      createdAt: "2026-06-13T00:00:00.000Z",
+      updatedAt: "2026-06-13T00:00:00.000Z",
+      states: [],
+      assets: [],
+      bindings: [],
+      settings: {
+        recognitionSensitivity: 95
+      }
+    };
+
+    expect(restoreStateFromProject(project).settings.recognitionSensitivity).toBe(95);
+  });
+
+  it("uses default recognition sensitivity when restoring old project snapshots", () => {
+    const project: Project = {
+      id: "project_1",
+      name: "old project",
+      createdAt: "2026-06-13T00:00:00.000Z",
+      updatedAt: "2026-06-13T00:00:00.000Z",
+      states: [],
+      assets: [],
+      bindings: []
+    };
+
+    expect(restoreStateFromProject(project).settings.recognitionSensitivity).toBe(85);
+  });
+
   it("saves and restores a trained recognition model snapshot", () => {
     const classifier = createEmbeddingClassifier();
     classifier.train([
@@ -121,6 +183,9 @@ describe("appProjectSnapshot", () => {
       },
       assets: [],
       bindings: [],
+      settings: {
+        recognitionSensitivity: 85
+      },
       recognitionModel: {
         classifier,
         embedder: {

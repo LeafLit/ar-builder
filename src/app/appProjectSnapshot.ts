@@ -4,7 +4,11 @@ import {
   restoreRecognitionModel,
   serializeRecognitionModel
 } from "../features/ml/recognitionModelSnapshot";
-import type { InputState, Project } from "../features/projects/projectTypes";
+import {
+  normalizeProjectSettings,
+  type InputState,
+  type Project
+} from "../features/projects/projectTypes";
 import { createId } from "../shared/id";
 
 const DEFAULT_PROJECT_STATES = [
@@ -35,6 +39,7 @@ export function createProjectFromAppState(
     })),
     assets: state.assets,
     bindings: state.bindings,
+    settings: normalizeProjectSettings(state.settings),
     ...(recognitionModel ? { recognitionModel } : {})
   };
 }
@@ -50,7 +55,8 @@ export function restoreStateFromProject(project: Project): AppState {
     },
     assets: project.assets,
     bindings: project.bindings,
-    recognitionModel: restoreRecognitionModel(project.recognitionModel)
+    recognitionModel: restoreRecognitionModel(project.recognitionModel),
+    settings: normalizeProjectSettings(project.settings)
   };
 }
 
