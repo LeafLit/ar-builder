@@ -175,6 +175,7 @@ describe("TestScreen", () => {
 
     act(() => {
       emitResult({ stateId: "state_b", confidence: 0.82 });
+      emitResult({ stateId: "state_b", confidence: 0.82 });
     });
 
     expect(screen.getByText("状态 B 的 AR 输出")).toBeInTheDocument();
@@ -182,6 +183,85 @@ describe("TestScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "停止自动识别" }));
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for two matching automatic recognition frames before showing AR output", async () => {
+    let emitResult: RecognitionListener = () => undefined;
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async (onResult) => {
+        emitResult = onResult;
+        return { stop: vi.fn() };
+      })
+    };
+    const { container } = render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(recognizer.start).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+    });
+
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.88 });
+    });
+
+    expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+  });
+
+  it("clears automatic AR output after two missed recognition frames", async () => {
+    let emitResult: RecognitionListener = () => undefined;
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async (onResult) => {
+        emitResult = onResult;
+        return { stop: vi.fn() };
+      })
+    };
+    const { container } = render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(recognizer.start).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+    });
+
+    expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.05 });
+    });
+
+    expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.04 });
+    });
+
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
   });
 
   it("does not fall back to simulated automatic recognition without a trained model", async () => {
@@ -233,6 +313,7 @@ describe("TestScreen", () => {
 
     act(() => {
       emitResult({ stateId: "state_a", confidence: 0.2 });
+      emitResult({ stateId: "state_a", confidence: 0.2 });
     });
 
     expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
@@ -272,11 +353,21 @@ describe("TestScreen", () => {
       target: { value: "100" }
     });
 
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.1 });
+      emitResult({ stateId: "state_a", confidence: 0.1 });
+    });
+
     expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
     expect(screen.getByText("识别灵敏度：100%")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("识别灵敏度"), {
       target: { value: "50" }
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.1 });
+      emitResult({ stateId: "state_a", confidence: 0.1 });
     });
 
     expect(container.querySelector(".ar-test-overlay")).toBeNull();

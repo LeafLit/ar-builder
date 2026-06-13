@@ -9,6 +9,11 @@ import {
   MIN_RECOGNITION_SENSITIVITY
 } from "../projects/projectTypes";
 import { createCameraStateRecognizer } from "./cameraStateRecognizer";
+import {
+  createInitialStableRecognitionState,
+  updateStableRecognition,
+  type StableRecognitionState
+} from "./stableRecognition";
 import { type RecognitionSession, type StateRecognizer } from "./stateRecognizer";
 
 type TestState = {
@@ -47,21 +52,28 @@ export function TestScreen(props: {
     DEFAULT_RECOGNITION_SENSITIVITY
   );
   const [recognitionPhase, setRecognitionPhase] = useState<RecognitionPhase>("idle");
+  const [stableRecognition, setStableRecognition] = useState<StableRecognitionState>(
+    createInitialStableRecognitionState
+  );
   const recognitionSensitivity =
     props.recognitionSensitivity ?? localRecognitionSensitivity;
   const recognitionStartingOrRunning =
     recognitionPhase === "starting" || recognitionPhase === "running";
   const recognitionThreshold = createRecognitionThreshold(recognitionSensitivity);
-  const acceptedDetectedState = isRecognitionAccepted(confidence, recognitionThreshold)
+  const recognitionThresholdRef = useRef(recognitionThreshold);
+  recognitionThresholdRef.current = recognitionThreshold;
+  const confirmedDetectedState = stableRecognition.confirmedStateId
+    ? findTestState(stableRecognition.confirmedStateId)
+    : detectedState && confidence === undefined
     ? detectedState
     : undefined;
-  const output = acceptedDetectedState
-    ? resolveStateOutput(acceptedDetectedState, props.assets, props.bindings)
+  const output = confirmedDetectedState
+    ? resolveStateOutput(confirmedDetectedState, props.assets, props.bindings)
     : undefined;
   const anchorStyle = output ? createAnchorStyle(output.transform) : undefined;
   const statusText = createStatusText({
     confidence,
-    detectedState: acceptedDetectedState,
+    detectedState: confirmedDetectedState,
     recognitionPhase
   });
 
@@ -79,6 +91,7 @@ export function TestScreen(props: {
     setRecognitionPhase("starting");
     setDetectedState(undefined);
     setConfidence(undefined);
+    setStableRecognition(createInitialStableRecognitionState());
 
     try {
       const recognizer = createActiveRecognizer({
@@ -88,12 +101,18 @@ export function TestScreen(props: {
         video: videoRef.current
       });
       const session = await recognizer.start((prediction) => {
-        const nextState = TEST_STATES.find((state) => state.id === prediction.stateId) ?? {
-          id: prediction.stateId,
-          name: prediction.stateId
-        };
-        setDetectedState(nextState);
+        setDetectedState(findTestState(prediction.stateId));
         setConfidence(prediction.confidence);
+        setStableRecognition((current) =>
+          updateStableRecognition(
+            current,
+            {
+              stateId: prediction.stateId,
+              confidence: prediction.confidence
+            },
+            recognitionThresholdRef.current
+          )
+        );
       });
       sessionRef.current = session;
       setRecognitionPhase("running");
@@ -107,6 +126,7 @@ export function TestScreen(props: {
     sessionRef.current?.stop();
     sessionRef.current = undefined;
     setRecognitionPhase("idle");
+    setStableRecognition(createInitialStableRecognitionState());
   }
 
   function manuallyDetect(state: TestState) {
@@ -115,6 +135,7 @@ export function TestScreen(props: {
     setRecognitionPhase("idle");
     setDetectedState(state);
     setConfidence(undefined);
+    setStableRecognition(createInitialStableRecognitionState());
   }
 
   function changeRecognitionSensitivity(nextValue: number) {
@@ -238,12 +259,15 @@ function createStatusText(input: {
   return "等待识别状态。";
 }
 
-function createRecognitionThreshold(sensitivity: number) {
-  return Math.max(0.03, (100 - sensitivity) / 100);
+function findTestState(stateId: string): TestState {
+  return TEST_STATES.find((state) => state.id === stateId) ?? {
+    id: stateId,
+    name: stateId
+  };
 }
 
-function isRecognitionAccepted(confidence: number | undefined, threshold: number) {
-  return confidence === undefined || confidence >= threshold;
+function createRecognitionThreshold(sensitivity: number) {
+  return Math.max(0.03, (100 - sensitivity) / 100);
 }
 
 function createActiveRecognizer(input: {
