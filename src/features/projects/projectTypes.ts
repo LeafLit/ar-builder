@@ -1,6 +1,7 @@
 import type { SerializedRecognitionModel } from "../ml/classifierTypes";
 
 export type AssetType = "model3d" | "image2d" | "text" | "audio";
+export type BuiltInModel3DId = "cube" | "sphere" | "cone" | "tree";
 
 export const DEFAULT_RECOGNITION_SENSITIVITY = 85;
 export const MIN_RECOGNITION_SENSITIVITY = 50;
@@ -43,7 +44,14 @@ export type ImageOutputDraft = {
   transform: Transform;
 };
 
-export type StateOutputDraft = TextOutputDraft | ImageOutputDraft;
+export type Model3DOutputDraft = {
+  assetType: "model3d";
+  modelId: BuiltInModel3DId;
+  name: string;
+  transform: Transform;
+};
+
+export type StateOutputDraft = TextOutputDraft | ImageOutputDraft | Model3DOutputDraft;
 
 export type InputState = {
   id: string;
@@ -59,6 +67,7 @@ export type Asset = {
   content?: string;
   localBlobKey?: string;
   url?: string;
+  modelId?: BuiltInModel3DId;
 };
 
 export type OutputAction =

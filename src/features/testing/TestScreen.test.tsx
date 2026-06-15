@@ -140,6 +140,44 @@ describe("TestScreen", () => {
     });
   });
 
+  it("renders a built-in 3D model asset as a virtual object", () => {
+    const modelAssets: Asset[] = [
+      {
+        id: "asset_model3d_state_a",
+        type: "model3d",
+        name: "小树",
+        modelId: "tree"
+      }
+    ];
+    const modelBindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "show",
+          assetId: "asset_model3d_state_a",
+          visible: true,
+          transform: {
+            position: [0.25, -0.2, 0],
+            rotation: [0, 0, 0],
+            scale: [1.2, 1.2, 1]
+          }
+        }
+      }
+    ];
+
+    render(<TestScreen assets={modelAssets} bindings={modelBindings} onBackHome={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(screen.getByLabelText("小树 3D 模型")).toBeInTheDocument();
+    expect(screen.getByLabelText("小树 3D 模型").closest(".ar-test-overlay")).toHaveStyle({
+      "--anchor-x": "62.5%",
+      "--anchor-y": "40%",
+      "--anchor-scale": "1.2"
+    });
+  });
+
   it("shows an empty-state message when a state has no binding", () => {
     render(<TestScreen assets={[]} bindings={[]} onBackHome={vi.fn()} />);
 

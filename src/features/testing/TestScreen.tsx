@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Model3DPreview } from "../ar/Model3DPreview";
 import { createScreenAnchorPlacement } from "../ar/screenAnchor";
 import { createRuleEngine } from "../authoring/ruleEngine";
 import type { RecognitionModel } from "../ml/classifierTypes";
@@ -166,7 +167,7 @@ export function TestScreen(props: {
         <div className="ar-test-camera">相机画面预览</div>
         {output && (
           <div
-            className={`ar-test-overlay ${output.asset?.type === "image2d" ? "image-output" : ""}`}
+            className={`ar-test-overlay ${createOutputClassName(output.asset)}`}
             aria-live="polite"
             style={anchorStyle}
           >
@@ -369,9 +370,29 @@ function renderOutput(output: ResolvedStateOutput) {
     return <img alt={output.asset.name} className="ar-test-image-output" src={output.asset.url} />;
   }
 
+  if (output.asset.type === "model3d") {
+    if (!output.asset.modelId) {
+      return "3D 模型素材为空。";
+    }
+
+    return <Model3DPreview label={output.asset.name} modelId={output.asset.modelId} />;
+  }
+
   if (output.asset.type === "text") {
     return output.asset.content || "文字素材为空。";
   }
 
   return `${output.asset.name} 暂不支持预览。`;
+}
+
+function createOutputClassName(asset: Asset | undefined) {
+  if (asset?.type === "image2d") {
+    return "image-output";
+  }
+
+  if (asset?.type === "model3d") {
+    return "model3d-output";
+  }
+
+  return "";
 }

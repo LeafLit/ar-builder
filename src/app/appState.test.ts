@@ -283,6 +283,48 @@ describe("appReducer", () => {
     ]);
   });
 
+  it("stores built-in 3D model outputs as model assets and state bindings", () => {
+    const state = appReducer(initialAppState, {
+      type: "saveTextOutputs",
+      outputs: {
+        state_a: {
+          assetType: "model3d",
+          modelId: "tree",
+          name: "小树",
+          transform: {
+            position: [0.2, -0.1, 0],
+            rotation: [0, 0, 0],
+            scale: [1.3, 1.3, 1]
+          }
+        }
+      }
+    });
+
+    expect(state.assets).toEqual([
+      expect.objectContaining({
+        id: "asset_model3d_state_a",
+        type: "model3d",
+        name: "小树",
+        modelId: "tree"
+      })
+    ]);
+    expect(state.bindings).toEqual([
+      expect.objectContaining({
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: expect.objectContaining({
+          type: "show",
+          assetId: "asset_model3d_state_a",
+          transform: {
+            position: [0.2, -0.1, 0],
+            rotation: [0, 0, 0],
+            scale: [1.3, 1.3, 1]
+          }
+        })
+      })
+    ]);
+  });
+
   it("preserves unrelated assets and bindings when saving text outputs", () => {
     const existingAsset = {
       id: "asset_image_1",

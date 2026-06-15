@@ -53,7 +53,7 @@ describe("AuthoringScreen", () => {
         }
       }
     });
-    expect(screen.getByText("已保存 2 个文字输出。")).toBeInTheDocument();
+    expect(screen.getByText("已保存 2 个输出。")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "下一步：测试" }));
     expect(onNext).toHaveBeenCalledTimes(1);
@@ -102,6 +102,52 @@ describe("AuthoringScreen", () => {
             position: [0.4, -0.4, 0],
             rotation: [0, 0, 0],
             scale: [1, 1, 1]
+          }
+        }
+      })
+    );
+  });
+
+  it("saves a built-in 3D model output for a state", () => {
+    const onSaveTextOutputs = vi.fn();
+
+    render(
+      <AuthoringScreen
+        assets={[]}
+        bindings={[]}
+        onNext={vi.fn()}
+        onSaveTextOutputs={onSaveTextOutputs}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("状态 A 的输出类型"), {
+      target: { value: "model3d" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的 3D 模型"), {
+      target: { value: "tree" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的横向位置"), {
+      target: { value: "30" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的大小"), {
+      target: { value: "135" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "状态 B 仍然显示文字" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
+    expect(onSaveTextOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_a: {
+          assetType: "model3d",
+          modelId: "tree",
+          name: "小树",
+          transform: {
+            position: [0.3, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1.35, 1.35, 1]
           }
         }
       })

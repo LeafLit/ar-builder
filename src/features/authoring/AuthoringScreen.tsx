@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BUILT_IN_MODEL_3D_OPTIONS, getBuiltInModel3DOption } from "../ar/model3dCatalog";
 import type { Asset, StateBinding, StateOutputDraft, Transform } from "../projects/projectTypes";
 
 type AuthoringState = {
@@ -59,10 +60,24 @@ export function AuthoringScreen(props: {
     }));
   }
 
-  function updateOutputType(stateId: string, assetType: "text" | "image2d") {
+  function updateOutputType(stateId: string, assetType: "text" | "image2d" | "model3d") {
     setOutputs((current) => {
       const currentOutput = current[stateId];
       const transform = cloneTransform(currentOutput.transform);
+
+      if (assetType === "model3d") {
+        const option = getBuiltInModel3DOption("cube");
+
+        return {
+          ...current,
+          [stateId]: {
+            assetType: "model3d",
+            modelId: option.id,
+            name: option.label,
+            transform
+          }
+        };
+      }
 
       return {
         ...current,
@@ -79,6 +94,24 @@ export function AuthoringScreen(props: {
                 content: "",
                 transform
               }
+      };
+    });
+  }
+
+  function updateModel3DOutput(stateId: string, modelId: string) {
+    const option = getBuiltInModel3DOption(modelId);
+
+    setOutputs((current) => {
+      const currentOutput = current[stateId];
+
+      return {
+        ...current,
+        [stateId]: {
+          assetType: "model3d",
+          modelId: option.id,
+          name: option.label,
+          transform: cloneTransform(currentOutput.transform)
+        }
       };
     });
   }
@@ -170,12 +203,16 @@ export function AuthoringScreen(props: {
                 <select
                   aria-label={`${state.name} 的输出类型`}
                   onChange={(event) =>
-                    updateOutputType(state.id, event.target.value as "text" | "image2d")
+                    updateOutputType(
+                      state.id,
+                      event.target.value as "text" | "image2d" | "model3d"
+                    )
                   }
-                  value={output.assetType === "image2d" ? "image2d" : "text"}
+                  value={output.assetType ?? "text"}
                 >
                   <option value="text">文字</option>
                   <option value="image2d">图片</option>
+                  <option value="model3d">3D 模型</option>
                 </select>
               </label>
 
@@ -204,6 +241,21 @@ export function AuthoringScreen(props: {
                     />
                   )}
                 </div>
+              ) : output.assetType === "model3d" ? (
+                <label className="stack compact-stack">
+                  <span>{state.name} 的 3D 模型</span>
+                  <select
+                    aria-label={`${state.name} 的 3D 模型`}
+                    onChange={(event) => updateModel3DOutput(state.id, event.target.value)}
+                    value={output.modelId}
+                  >
+                    {BUILT_IN_MODEL_3D_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               ) : (
                 <label className="stack compact-stack">
                   <span>{state.name} 的 AR 文字</span>
@@ -270,7 +322,7 @@ export function AuthoringScreen(props: {
       </div>
 
       <p className="muted" role="status">
-        {saved ? `已保存 ${filledOutputCount} 个文字输出。` : "填写两个状态的文字后保存绑定。"}
+        {saved ? `已保存 ${filledOutputCount} 个输出。` : "填写两个状态的输出后保存绑定。"}
       </p>
     </div>
   );
@@ -302,6 +354,17 @@ function getStateOutputDraft(
     };
   }
 
+  if (asset?.type === "model3d") {
+    const option = getBuiltInModel3DOption(asset.modelId);
+
+    return {
+      assetType: "model3d",
+      modelId: option.id,
+      name: asset.name || option.label,
+      transform: cloneTransform(binding.action.transform)
+    };
+  }
+
   return {
     assetType: "text",
     content: asset?.content ?? "",
@@ -310,7 +373,15 @@ function getStateOutputDraft(
 }
 
 function isOutputReady(output: StateOutputDraft) {
-  return output.assetType === "image2d" ? Boolean(output.url) : Boolean(output.content.trim());
+  if (output.assetType === "image2d") {
+    return Boolean(output.url);
+  }
+
+  if (output.assetType === "model3d") {
+    return Boolean(output.modelId);
+  }
+
+  return Boolean(output.content.trim());
 }
 
 function normalizeOutputForSave(output: StateOutputDraft): StateOutputDraft {
@@ -318,6 +389,17 @@ function normalizeOutputForSave(output: StateOutputDraft): StateOutputDraft {
     return {
       ...output,
       name: output.name.trim() || "AR 图片"
+    };
+  }
+
+  if (output.assetType === "model3d") {
+    const option = getBuiltInModel3DOption(output.modelId);
+
+    return {
+      ...output,
+      modelId: option.id,
+      name: output.name.trim() || option.label,
+      transform: cloneTransform(output.transform)
     };
   }
 

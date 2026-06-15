@@ -100,7 +100,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         stateIds.map((stateId) => [stateId, normalizeStateOutput(action.outputs[stateId])])
       );
       const replaceAssetIds = new Set(
-        stateIds.flatMap((stateId) => [`asset_text_${stateId}`, `asset_image_${stateId}`])
+        stateIds.flatMap((stateId) => [
+          `asset_text_${stateId}`,
+          `asset_image_${stateId}`,
+          `asset_model3d_${stateId}`
+        ])
       );
       const outputAssets: Asset[] = stateIds.map((stateId) =>
         createOutputAsset(stateId, normalizedOutputs[stateId])
@@ -147,6 +151,15 @@ function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDra
     };
   }
 
+  if (output.assetType === "model3d") {
+    return {
+      assetType: "model3d",
+      modelId: output.modelId,
+      name: output.name,
+      transform: cloneTransform(output.transform)
+    };
+  }
+
   return {
     assetType: "text",
     content: output.content,
@@ -155,7 +168,15 @@ function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDra
 }
 
 function createOutputAssetId(stateId: string, output: StateOutputDraft) {
-  return output.assetType === "image2d" ? `asset_image_${stateId}` : `asset_text_${stateId}`;
+  if (output.assetType === "image2d") {
+    return `asset_image_${stateId}`;
+  }
+
+  if (output.assetType === "model3d") {
+    return `asset_model3d_${stateId}`;
+  }
+
+  return `asset_text_${stateId}`;
 }
 
 function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
@@ -165,6 +186,15 @@ function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
       type: "image2d",
       name: output.name.trim() || `${stateId} 图片`,
       url: output.url
+    };
+  }
+
+  if (output.assetType === "model3d") {
+    return {
+      id: createOutputAssetId(stateId, output),
+      type: "model3d",
+      name: output.name.trim() || `${stateId} 3D 模型`,
+      modelId: output.modelId
     };
   }
 
