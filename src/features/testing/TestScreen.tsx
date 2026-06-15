@@ -16,6 +16,11 @@ import {
   type StableRecognitionState
 } from "./stableRecognition";
 import { type RecognitionSession, type StateRecognizer } from "./stateRecognizer";
+import {
+  createInitialStateTriggerCounter,
+  resetStateTriggerCounter,
+  updateStateTriggerCounter
+} from "./stateTriggerCounter";
 
 type TestState = {
   id: string;
@@ -56,6 +61,9 @@ export function TestScreen(props: {
   const [stableRecognition, setStableRecognition] = useState<StableRecognitionState>(
     createInitialStableRecognitionState
   );
+  const [triggerCounter, setTriggerCounter] = useState(() =>
+    createInitialStateTriggerCounter(TEST_STATES.map((state) => state.id))
+  );
   const recognitionSensitivity =
     props.recognitionSensitivity ?? localRecognitionSensitivity;
   const recognitionStartingOrRunning =
@@ -83,6 +91,12 @@ export function TestScreen(props: {
       sessionRef.current?.stop();
     };
   }, []);
+
+  useEffect(() => {
+    setTriggerCounter((current) =>
+      updateStateTriggerCounter(current, confirmedDetectedState?.id)
+    );
+  }, [confirmedDetectedState?.id]);
 
   async function startAutomaticRecognition() {
     if (recognitionStartingOrRunning) {
@@ -145,6 +159,10 @@ export function TestScreen(props: {
     }
 
     props.onRecognitionSensitivityChange?.(nextValue);
+  }
+
+  function resetTriggerCounts() {
+    setTriggerCounter((current) => resetStateTriggerCounter(current));
   }
 
   return (
@@ -220,6 +238,31 @@ export function TestScreen(props: {
           value={recognitionSensitivity}
         />
       </label>
+
+      <section className="counter-panel" aria-labelledby="state-trigger-counter-title">
+        <div className="counter-panel-header">
+          <h2 id="state-trigger-counter-title">状态计数</h2>
+          <button className="secondary-button" onClick={resetTriggerCounts} type="button">
+            重置计数
+          </button>
+        </div>
+        <div className="counter-list">
+          {TEST_STATES.map((state) => {
+            const count = triggerCounter.counts[state.id] ?? 0;
+
+            return (
+              <div
+                aria-label={`${state.name} 触发 ${count} 次`}
+                className="counter-row"
+                key={state.id}
+              >
+                <span>{state.name}</span>
+                <strong>{count} 次</strong>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <p className="muted" role="status">
         {statusText}

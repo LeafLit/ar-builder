@@ -356,6 +356,54 @@ textarea {
   accent-color: #0f766e;
 }
 
+.counter-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.counter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.counter-panel-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.counter-panel-header .secondary-button {
+  min-height: 36px;
+}
+
+.counter-list {
+  display: grid;
+  gap: 8px;
+}
+
+.counter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.counter-row strong {
+  color: #0f766e;
+}
+
 .ar-test-stage {
   min-height: 320px;
   border: 1px solid #cbd5e1;

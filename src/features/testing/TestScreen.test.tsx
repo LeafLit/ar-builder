@@ -71,6 +71,39 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A");
   });
 
+  it("counts manual state entries without repeating the active state", () => {
+    render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
+
+    expect(screen.getByLabelText("状态 A 触发 0 次")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 B 触发 0 次")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(screen.getByLabelText("状态 A 触发 1 次")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 B 触发 0 次")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 B" }));
+
+    expect(screen.getByLabelText("状态 A 触发 1 次")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 B 触发 1 次")).toBeInTheDocument();
+  });
+
+  it("resets visible state trigger counts", () => {
+    render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 B" }));
+
+    expect(screen.getByLabelText("状态 A 触发 1 次")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 B 触发 1 次")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重置计数" }));
+
+    expect(screen.getByLabelText("状态 A 触发 0 次")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 B 触发 0 次")).toBeInTheDocument();
+  });
+
   it("places the AR output at the saved screen anchor", () => {
     const anchoredBindings: StateBinding[] = [
       {
@@ -304,6 +337,53 @@ describe("TestScreen", () => {
     });
 
     expect(container.querySelector(".ar-test-overlay")).toBeNull();
+  });
+
+  it("counts automatic state again after recognition is lost and confirmed again", async () => {
+    let emitResult: RecognitionListener = () => undefined;
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async (onResult) => {
+        emitResult = onResult;
+        return { stop: vi.fn() };
+      })
+    };
+    const { container } = render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(recognizer.start).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+    });
+
+    expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 A 触发 1 次")).toBeInTheDocument();
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.04 });
+      emitResult({ stateId: "state_a", confidence: 0.04 });
+    });
+
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+    });
+
+    expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 A 触发 2 次")).toBeInTheDocument();
   });
 
   it("does not fall back to simulated automatic recognition without a trained model", async () => {
