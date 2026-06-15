@@ -154,6 +154,42 @@ describe("AuthoringScreen", () => {
     );
   });
 
+  it("saves the 3D model rotation angle in radians", () => {
+    const onSaveTextOutputs = vi.fn();
+
+    render(
+      <AuthoringScreen
+        assets={[]}
+        bindings={[]}
+        onNext={vi.fn()}
+        onSaveTextOutputs={onSaveTextOutputs}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("状态 A 的输出类型"), {
+      target: { value: "model3d" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的旋转角度"), {
+      target: { value: "90" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "状态 B 仍然显示文字" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
+    expect(onSaveTextOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_a: expect.objectContaining({
+          assetType: "model3d",
+          transform: expect.objectContaining({
+            rotation: [0, Math.PI / 2, 0]
+          })
+        })
+      })
+    );
+  });
+
   it("loads existing text outputs for editing", () => {
     const assets: Asset[] = [
       {
@@ -235,5 +271,45 @@ describe("AuthoringScreen", () => {
       "data:image/png;base64,old"
     );
     expect(screen.getByLabelText("状态 A 的大小")).toHaveValue("150");
+  });
+
+  it("loads an existing 3D model rotation for editing", () => {
+    const assets: Asset[] = [
+      {
+        id: "asset_model3d_state_a",
+        type: "model3d",
+        name: "小树",
+        modelId: "tree"
+      }
+    ];
+    const bindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "show",
+          assetId: "asset_model3d_state_a",
+          visible: true,
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, Math.PI, 0],
+            scale: [1, 1, 1]
+          }
+        }
+      }
+    ];
+
+    render(
+      <AuthoringScreen
+        assets={assets}
+        bindings={bindings}
+        onNext={vi.fn()}
+        onSaveTextOutputs={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("状态 A 的输出类型")).toHaveValue("model3d");
+    expect(screen.getByLabelText("状态 A 的 3D 模型")).toHaveValue("tree");
+    expect(screen.getByLabelText("状态 A 的旋转角度")).toHaveValue("180");
   });
 });

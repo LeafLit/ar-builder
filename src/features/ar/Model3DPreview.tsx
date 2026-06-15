@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import type { BuiltInModel3DId } from "../projects/projectTypes";
+import type { BuiltInModel3DId, Transform } from "../projects/projectTypes";
 import { createBuiltInModelMesh } from "./model3dCatalog";
 
 export function Model3DPreview({
   label,
-  modelId
+  modelId,
+  rotation
 }: {
   label: string;
   modelId: BuiltInModel3DId;
+  rotation: Transform["rotation"];
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [webGlUnavailable, setWebGlUnavailable] = useState(false);
@@ -37,6 +39,7 @@ export function Model3DPreview({
     const ambientLight = new THREE.AmbientLight("#ffffff", 1.15);
     const keyLight = new THREE.DirectionalLight("#ffffff", 1.8);
     let animationFrame = 0;
+    let spin = 0;
 
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -56,7 +59,8 @@ export function Model3DPreview({
       camera.updateProjectionMatrix();
     };
     const renderFrame = () => {
-      model.rotation.y += 0.012;
+      spin += 0.012;
+      model.rotation.set(rotation[0], rotation[1] + spin, rotation[2]);
       renderer.render(scene, camera);
       animationFrame = window.requestAnimationFrame(renderFrame);
     };
@@ -79,12 +83,13 @@ export function Model3DPreview({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [modelId]);
+  }, [modelId, rotation]);
 
   return (
     <div
       aria-label={`${label} 3D 模型`}
       className="ar-test-model3d-output"
+      data-rotation-y={rotation[1].toFixed(4)}
       ref={containerRef}
       role="img"
     >

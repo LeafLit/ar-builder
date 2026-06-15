@@ -135,7 +135,7 @@ export function AuthoringScreen(props: {
     });
   }
 
-  function updateAnchor(stateId: string, field: "x" | "y" | "scale", value: string) {
+  function updateAnchor(stateId: string, field: "x" | "y" | "scale" | "rotationY", value: string) {
     const numericValue = Number(value);
 
     setOutputs((current) => {
@@ -163,6 +163,23 @@ export function AuthoringScreen(props: {
             transform: {
               ...transform,
               position: [transform.position[0], numericValue / 100, transform.position[2]]
+            }
+          }
+        };
+      }
+
+      if (field === "rotationY") {
+        return {
+          ...current,
+          [stateId]: {
+            ...currentOutput,
+            transform: {
+              ...transform,
+              rotation: [
+                transform.rotation[0],
+                degreesToRadians(numericValue),
+                transform.rotation[2]
+              ]
             }
           }
         };
@@ -307,6 +324,21 @@ export function AuthoringScreen(props: {
                   />
                 </label>
               </div>
+
+              {output.assetType === "model3d" && (
+                <label className="range-field">
+                  <span>旋转角度：{anchorValues.rotationY}°</span>
+                  <input
+                    aria-label={`${state.name} 的旋转角度`}
+                    max="360"
+                    min="0"
+                    onChange={(event) => updateAnchor(state.id, "rotationY", event.target.value)}
+                    step="15"
+                    type="range"
+                    value={anchorValues.rotationY}
+                  />
+                </label>
+              )}
             </div>
           );
         })}
@@ -413,7 +445,8 @@ function createAnchorControlValues(transform: Transform) {
   return {
     x: Math.round(transform.position[0] * 100).toString(),
     y: Math.round(transform.position[1] * 100).toString(),
-    scale: Math.round(transform.scale[0] * 100).toString()
+    scale: Math.round(transform.scale[0] * 100).toString(),
+    rotationY: Math.round(radiansToDegrees(transform.rotation[1])).toString()
   };
 }
 
@@ -433,4 +466,12 @@ function readImageFile(file: File): Promise<string> {
     reader.addEventListener("error", () => reject(reader.error ?? new Error("图片读取失败")));
     reader.readAsDataURL(file);
   });
+}
+
+function degreesToRadians(degrees: number) {
+  return (degrees * Math.PI) / 180;
+}
+
+function radiansToDegrees(radians: number) {
+  return (radians * 180) / Math.PI;
 }

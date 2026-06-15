@@ -159,7 +159,7 @@ describe("TestScreen", () => {
           visible: true,
           transform: {
             position: [0.25, -0.2, 0],
-            rotation: [0, 0, 0],
+            rotation: [0, Math.PI / 2, 0],
             scale: [1.2, 1.2, 1]
           }
         }
@@ -171,6 +171,10 @@ describe("TestScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
 
     expect(screen.getByLabelText("小树 3D 模型")).toBeInTheDocument();
+    expect(screen.getByLabelText("小树 3D 模型")).toHaveAttribute(
+      "data-rotation-y",
+      "1.5708"
+    );
     expect(screen.getByLabelText("小树 3D 模型").closest(".ar-test-overlay")).toHaveStyle({
       "--anchor-x": "62.5%",
       "--anchor-y": "40%",

@@ -375,7 +375,13 @@ function renderOutput(output: ResolvedStateOutput) {
       return "3D 模型素材为空。";
     }
 
-    return <Model3DPreview label={output.asset.name} modelId={output.asset.modelId} />;
+    return (
+      <Model3DPreview
+        label={output.asset.name}
+        modelId={output.asset.modelId}
+        rotation={output.transform.rotation}
+      />
+    );
   }
 
   if (output.asset.type === "text") {
