@@ -190,6 +190,46 @@ describe("AuthoringScreen", () => {
     );
   });
 
+  it("saves a built-in audio output for a state", () => {
+    const onSaveTextOutputs = vi.fn();
+
+    render(
+      <AuthoringScreen
+        assets={[]}
+        bindings={[]}
+        onNext={vi.fn()}
+        onSaveTextOutputs={onSaveTextOutputs}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("状态 A 的输出类型"), {
+      target: { value: "audio" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的音效"), {
+      target: { value: "success" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "状态 B 仍然显示文字" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
+    expect(onSaveTextOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_a: {
+          assetType: "audio",
+          audioId: "success",
+          name: "成功音",
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          }
+        }
+      })
+    );
+  });
+
   it("loads existing text outputs for editing", () => {
     const assets: Asset[] = [
       {
@@ -311,5 +351,38 @@ describe("AuthoringScreen", () => {
     expect(screen.getByLabelText("状态 A 的输出类型")).toHaveValue("model3d");
     expect(screen.getByLabelText("状态 A 的 3D 模型")).toHaveValue("tree");
     expect(screen.getByLabelText("状态 A 的旋转角度")).toHaveValue("180");
+  });
+
+  it("loads an existing built-in audio output for editing", () => {
+    const assets: Asset[] = [
+      {
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "警告音",
+        audioId: "alert"
+      }
+    ];
+    const bindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      }
+    ];
+
+    render(
+      <AuthoringScreen
+        assets={assets}
+        bindings={bindings}
+        onNext={vi.fn()}
+        onSaveTextOutputs={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("状态 A 的输出类型")).toHaveValue("audio");
+    expect(screen.getByLabelText("状态 A 的音效")).toHaveValue("alert");
   });
 });

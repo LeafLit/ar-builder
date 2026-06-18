@@ -103,22 +103,16 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         stateIds.flatMap((stateId) => [
           `asset_text_${stateId}`,
           `asset_image_${stateId}`,
-          `asset_model3d_${stateId}`
+          `asset_model3d_${stateId}`,
+          `asset_audio_${stateId}`
         ])
       );
       const outputAssets: Asset[] = stateIds.map((stateId) =>
         createOutputAsset(stateId, normalizedOutputs[stateId])
       );
-      const outputBindings: StateBinding[] = stateIds.map((stateId) => ({
-        id: `binding_${stateId}`,
-        stateId,
-        action: {
-          type: "show",
-          assetId: createOutputAssetId(stateId, normalizedOutputs[stateId]),
-          transform: normalizedOutputs[stateId].transform,
-          visible: true
-        }
-      }));
+      const outputBindings: StateBinding[] = stateIds.map((stateId) =>
+        createOutputBinding(stateId, normalizedOutputs[stateId])
+      );
       const preservedAssets = state.assets.filter((asset) => !replaceAssetIds.has(asset.id));
       const preservedBindings = state.bindings.filter((binding) => !stateIds.includes(binding.stateId));
 
@@ -160,6 +154,15 @@ function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDra
     };
   }
 
+  if (output.assetType === "audio") {
+    return {
+      assetType: "audio",
+      audioId: output.audioId,
+      name: output.name,
+      transform: cloneTransform(output.transform)
+    };
+  }
+
   return {
     assetType: "text",
     content: output.content,
@@ -176,7 +179,37 @@ function createOutputAssetId(stateId: string, output: StateOutputDraft) {
     return `asset_model3d_${stateId}`;
   }
 
+  if (output.assetType === "audio") {
+    return `asset_audio_${stateId}`;
+  }
+
   return `asset_text_${stateId}`;
+}
+
+function createOutputBinding(stateId: string, output: StateOutputDraft): StateBinding {
+  const assetId = createOutputAssetId(stateId, output);
+
+  if (output.assetType === "audio") {
+    return {
+      id: `binding_${stateId}`,
+      stateId,
+      action: {
+        type: "playAudio",
+        assetId
+      }
+    };
+  }
+
+  return {
+    id: `binding_${stateId}`,
+    stateId,
+    action: {
+      type: "show",
+      assetId,
+      transform: output.transform,
+      visible: true
+    }
+  };
 }
 
 function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
@@ -195,6 +228,15 @@ function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
       type: "model3d",
       name: output.name.trim() || `${stateId} 3D 模型`,
       modelId: output.modelId
+    };
+  }
+
+  if (output.assetType === "audio") {
+    return {
+      id: createOutputAssetId(stateId, output),
+      type: "audio",
+      name: output.name.trim() || `${stateId} 音效`,
+      audioId: output.audioId
     };
   }
 

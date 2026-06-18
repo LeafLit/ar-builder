@@ -1,6 +1,14 @@
 import { useState } from "react";
+import { BUILT_IN_AUDIO_OPTIONS, getBuiltInAudioOption } from "../ar/audioCatalog";
 import { BUILT_IN_MODEL_3D_OPTIONS, getBuiltInModel3DOption } from "../ar/model3dCatalog";
-import type { Asset, StateBinding, StateOutputDraft, Transform } from "../projects/projectTypes";
+import type {
+  Asset,
+  AssetType,
+  BuiltInAudioId,
+  StateBinding,
+  StateOutputDraft,
+  Transform
+} from "../projects/projectTypes";
 
 type AuthoringState = {
   id: string;
@@ -60,7 +68,7 @@ export function AuthoringScreen(props: {
     }));
   }
 
-  function updateOutputType(stateId: string, assetType: "text" | "image2d" | "model3d") {
+  function updateOutputType(stateId: string, assetType: AssetType) {
     setOutputs((current) => {
       const currentOutput = current[stateId];
       const transform = cloneTransform(currentOutput.transform);
@@ -73,6 +81,20 @@ export function AuthoringScreen(props: {
           [stateId]: {
             assetType: "model3d",
             modelId: option.id,
+            name: option.label,
+            transform
+          }
+        };
+      }
+
+      if (assetType === "audio") {
+        const option = getBuiltInAudioOption("beep");
+
+        return {
+          ...current,
+          [stateId]: {
+            assetType: "audio",
+            audioId: option.id,
             name: option.label,
             transform
           }
@@ -94,6 +116,24 @@ export function AuthoringScreen(props: {
                 content: "",
                 transform
               }
+      };
+    });
+  }
+
+  function updateAudioOutput(stateId: string, audioId: string) {
+    const option = getBuiltInAudioOption(audioId);
+
+    setOutputs((current) => {
+      const currentOutput = current[stateId];
+
+      return {
+        ...current,
+        [stateId]: {
+          assetType: "audio",
+          audioId: option.id,
+          name: option.label,
+          transform: cloneTransform(currentOutput.transform)
+        }
       };
     });
   }
@@ -220,16 +260,14 @@ export function AuthoringScreen(props: {
                 <select
                   aria-label={`${state.name} 的输出类型`}
                   onChange={(event) =>
-                    updateOutputType(
-                      state.id,
-                      event.target.value as "text" | "image2d" | "model3d"
-                    )
+                    updateOutputType(state.id, event.target.value as AssetType)
                   }
                   value={output.assetType ?? "text"}
                 >
                   <option value="text">文字</option>
                   <option value="image2d">图片</option>
                   <option value="model3d">3D 模型</option>
+                  <option value="audio">音效</option>
                 </select>
               </label>
 
@@ -273,6 +311,21 @@ export function AuthoringScreen(props: {
                     ))}
                   </select>
                 </label>
+              ) : output.assetType === "audio" ? (
+                <label className="stack compact-stack">
+                  <span>{state.name} 的音效</span>
+                  <select
+                    aria-label={`${state.name} 的音效`}
+                    onChange={(event) => updateAudioOutput(state.id, event.target.value)}
+                    value={output.audioId}
+                  >
+                    {BUILT_IN_AUDIO_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               ) : (
                 <label className="stack compact-stack">
                   <span>{state.name} 的 AR 文字</span>
@@ -286,44 +339,46 @@ export function AuthoringScreen(props: {
                 </label>
               )}
 
-              <div className="anchor-controls" aria-label={`${state.name} 的屏幕锚点`}>
-                <label className="range-field">
-                  <span>横向位置：{anchorValues.x}%</span>
-                  <input
-                    aria-label={`${state.name} 的横向位置`}
-                    max="100"
-                    min="-100"
-                    onChange={(event) => updateAnchor(state.id, "x", event.target.value)}
-                    step="5"
-                    type="range"
-                    value={anchorValues.x}
-                  />
-                </label>
-                <label className="range-field">
-                  <span>纵向位置：{anchorValues.y}%</span>
-                  <input
-                    aria-label={`${state.name} 的纵向位置`}
-                    max="100"
-                    min="-100"
-                    onChange={(event) => updateAnchor(state.id, "y", event.target.value)}
-                    step="5"
-                    type="range"
-                    value={anchorValues.y}
-                  />
-                </label>
-                <label className="range-field">
-                  <span>大小：{anchorValues.scale}%</span>
-                  <input
-                    aria-label={`${state.name} 的大小`}
-                    max="200"
-                    min="50"
-                    onChange={(event) => updateAnchor(state.id, "scale", event.target.value)}
-                    step="5"
-                    type="range"
-                    value={anchorValues.scale}
-                  />
-                </label>
-              </div>
+              {output.assetType !== "audio" && (
+                <div className="anchor-controls" aria-label={`${state.name} 的屏幕锚点`}>
+                  <label className="range-field">
+                    <span>横向位置：{anchorValues.x}%</span>
+                    <input
+                      aria-label={`${state.name} 的横向位置`}
+                      max="100"
+                      min="-100"
+                      onChange={(event) => updateAnchor(state.id, "x", event.target.value)}
+                      step="5"
+                      type="range"
+                      value={anchorValues.x}
+                    />
+                  </label>
+                  <label className="range-field">
+                    <span>纵向位置：{anchorValues.y}%</span>
+                    <input
+                      aria-label={`${state.name} 的纵向位置`}
+                      max="100"
+                      min="-100"
+                      onChange={(event) => updateAnchor(state.id, "y", event.target.value)}
+                      step="5"
+                      type="range"
+                      value={anchorValues.y}
+                    />
+                  </label>
+                  <label className="range-field">
+                    <span>大小：{anchorValues.scale}%</span>
+                    <input
+                      aria-label={`${state.name} 的大小`}
+                      max="200"
+                      min="50"
+                      onChange={(event) => updateAnchor(state.id, "scale", event.target.value)}
+                      step="5"
+                      type="range"
+                      value={anchorValues.scale}
+                    />
+                  </label>
+                </div>
+              )}
 
               {output.assetType === "model3d" && (
                 <label className="range-field">
@@ -367,7 +422,7 @@ function getStateOutputDraft(
 ): StateOutputDraft {
   const binding = bindings.find((item) => item.stateId === stateId);
 
-  if (!binding || binding.action.type !== "show") {
+  if (!binding) {
     return {
       assetType: "text",
       content: "",
@@ -376,6 +431,25 @@ function getStateOutputDraft(
   }
 
   const asset = assets.find((item) => item.id === binding.action.assetId);
+
+  if (binding.action.type === "playAudio") {
+    const option = getBuiltInAudioOption(asset?.audioId);
+
+    return {
+      assetType: "audio",
+      audioId: option.id,
+      name: asset?.name || option.label,
+      transform: cloneTransform(DEFAULT_TEXT_TRANSFORM)
+    };
+  }
+
+  if (binding.action.type !== "show") {
+    return {
+      assetType: "text",
+      content: "",
+      transform: cloneTransform(DEFAULT_TEXT_TRANSFORM)
+    };
+  }
 
   if (asset?.type === "image2d") {
     return {
@@ -413,6 +487,10 @@ function isOutputReady(output: StateOutputDraft) {
     return Boolean(output.modelId);
   }
 
+  if (output.assetType === "audio") {
+    return Boolean(output.audioId);
+  }
+
   return Boolean(output.content.trim());
 }
 
@@ -430,6 +508,17 @@ function normalizeOutputForSave(output: StateOutputDraft): StateOutputDraft {
     return {
       ...output,
       modelId: option.id,
+      name: output.name.trim() || option.label,
+      transform: cloneTransform(output.transform)
+    };
+  }
+
+  if (output.assetType === "audio") {
+    const option = getBuiltInAudioOption(output.audioId);
+
+    return {
+      assetType: "audio",
+      audioId: option.id as BuiltInAudioId,
       name: output.name.trim() || option.label,
       transform: cloneTransform(output.transform)
     };

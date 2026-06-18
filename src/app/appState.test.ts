@@ -325,6 +325,93 @@ describe("appReducer", () => {
     ]);
   });
 
+  it("stores built-in audio outputs as audio assets and play bindings", () => {
+    const state = appReducer(initialAppState, {
+      type: "saveTextOutputs",
+      outputs: {
+        state_a: {
+          assetType: "audio",
+          audioId: "success",
+          name: "成功音",
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          }
+        }
+      }
+    });
+
+    expect(state.assets).toEqual([
+      expect.objectContaining({
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "成功音",
+        audioId: "success"
+      })
+    ]);
+    expect(state.bindings).toEqual([
+      expect.objectContaining({
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      })
+    ]);
+  });
+
+  it("replaces a previous audio asset when saving another output for the same state", () => {
+    const audioAsset = {
+      id: "asset_audio_state_a",
+      type: "audio" as const,
+      name: "旧提示音",
+      audioId: "beep" as const
+    };
+
+    const state = appReducer(
+      {
+        ...initialAppState,
+        assets: [audioAsset],
+        bindings: [
+          {
+            id: "binding_state_a",
+            stateId: "state_a",
+            action: {
+              type: "playAudio",
+              assetId: "asset_audio_state_a"
+            }
+          }
+        ]
+      },
+      {
+        type: "saveTextOutputs",
+        outputs: {
+          state_a: "新的文字输出"
+        }
+      }
+    );
+
+    expect(state.assets).not.toEqual(expect.arrayContaining([audioAsset]));
+    expect(state.assets).toEqual([
+      expect.objectContaining({
+        id: "asset_text_state_a",
+        type: "text",
+        content: "新的文字输出"
+      })
+    ]);
+    expect(state.bindings).toEqual([
+      expect.objectContaining({
+        stateId: "state_a",
+        action: expect.objectContaining({
+          type: "show",
+          assetId: "asset_text_state_a"
+        })
+      })
+    ]);
+  });
+
   it("preserves unrelated assets and bindings when saving text outputs", () => {
     const existingAsset = {
       id: "asset_image_1",

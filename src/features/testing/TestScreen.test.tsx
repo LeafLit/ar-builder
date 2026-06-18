@@ -104,6 +104,87 @@ describe("TestScreen", () => {
     expect(screen.getByLabelText("状态 B 触发 0 次")).toBeInTheDocument();
   });
 
+  it("plays a built-in audio output once when manually entering a state", async () => {
+    const playAudio = vi.fn(async () => undefined);
+    const audioAssets: Asset[] = [
+      {
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "成功音",
+        audioId: "success"
+      }
+    ];
+    const audioBindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      }
+    ];
+    const { container } = render(
+      <TestScreen
+        assets={audioAssets}
+        bindings={audioBindings}
+        onBackHome={vi.fn()}
+        playAudio={playAudio}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    await waitFor(() => {
+      expect(playAudio).toHaveBeenCalledWith("success");
+    });
+    expect(playAudio).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".ar-test-overlay")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(playAudio).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a message when built-in audio playback is blocked", async () => {
+    const playAudio = vi.fn(async () => {
+      throw new Error("blocked");
+    });
+    const audioAssets: Asset[] = [
+      {
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "提示音",
+        audioId: "beep"
+      }
+    ];
+    const audioBindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      }
+    ];
+
+    render(
+      <TestScreen
+        assets={audioAssets}
+        bindings={audioBindings}
+        onBackHome={vi.fn()}
+        playAudio={playAudio}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(
+      await screen.findByText("音效播放被浏览器阻止，请点一下页面后重试。")
+    ).toBeInTheDocument();
+  });
+
   it("places the AR output at the saved screen anchor", () => {
     const anchoredBindings: StateBinding[] = [
       {
@@ -384,6 +465,75 @@ describe("TestScreen", () => {
 
     expect(screen.getByText("状态 A 的 AR 输出")).toBeInTheDocument();
     expect(screen.getByLabelText("状态 A 触发 2 次")).toBeInTheDocument();
+  });
+
+  it("plays automatic audio again after recognition is lost and confirmed again", async () => {
+    let emitResult: RecognitionListener = () => undefined;
+    const playAudio = vi.fn(async () => undefined);
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async (onResult) => {
+        emitResult = onResult;
+        return { stop: vi.fn() };
+      })
+    };
+    const audioAssets: Asset[] = [
+      {
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "警告音",
+        audioId: "alert"
+      }
+    ];
+    const audioBindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      }
+    ];
+
+    render(
+      <TestScreen
+        assets={audioAssets}
+        bindings={audioBindings}
+        onBackHome={vi.fn()}
+        playAudio={playAudio}
+        recognizer={recognizer}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(recognizer.start).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+    });
+
+    await waitFor(() => {
+      expect(playAudio).toHaveBeenCalledTimes(1);
+    });
+    expect(playAudio).toHaveBeenLastCalledWith("alert");
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.04 });
+      emitResult({ stateId: "state_a", confidence: 0.04 });
+    });
+
+    act(() => {
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+      emitResult({ stateId: "state_a", confidence: 0.9 });
+    });
+
+    await waitFor(() => {
+      expect(playAudio).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("does not fall back to simulated automatic recognition without a trained model", async () => {

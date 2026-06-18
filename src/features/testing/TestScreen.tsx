@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { playBuiltInAudio } from "../ar/audioCatalog";
 import { Model3DPreview } from "../ar/Model3DPreview";
 import { createScreenAnchorPlacement } from "../ar/screenAnchor";
 import { createRuleEngine } from "../authoring/ruleEngine";
 import type { RecognitionModel } from "../ml/classifierTypes";
-import type { Asset, StateBinding, Transform } from "../projects/projectTypes";
+import type { Asset, BuiltInAudioId, StateBinding, Transform } from "../projects/projectTypes";
 import {
   DEFAULT_RECOGNITION_SENSITIVITY,
   MAX_RECOGNITION_SENSITIVITY,
@@ -34,6 +35,7 @@ const TEST_STATES: TestState[] = [
   { id: "state_b", name: "状态 B" }
 ];
 const SENSITIVITY_STEP = 5;
+const AUDIO_PLAYBACK_BLOCKED_MESSAGE = "音效播放被浏览器阻止，请点一下页面后重试。";
 
 type CameraRecognizerFactory = (
   video: HTMLVideoElement,
@@ -46,14 +48,18 @@ export function TestScreen(props: {
   recognitionModel?: RecognitionModel;
   recognizer?: StateRecognizer;
   createCameraRecognizer?: CameraRecognizerFactory;
+  playAudio?: (audioId: BuiltInAudioId) => Promise<void> | void;
   recognitionSensitivity?: number;
   onRecognitionSensitivityChange?: (recognitionSensitivity: number) => void;
   onBackHome: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
+  const lastAudioStateIdRef = useRef<string | undefined>(undefined);
+  const playAudioRef = useRef(props.playAudio ?? playBuiltInAudio);
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
+  const [audioMessage, setAudioMessage] = useState<string | undefined>();
   const [localRecognitionSensitivity, setLocalRecognitionSensitivity] = useState(
     DEFAULT_RECOGNITION_SENSITIVITY
   );
@@ -79,12 +85,17 @@ export function TestScreen(props: {
   const output = confirmedDetectedState
     ? resolveStateOutput(confirmedDetectedState, props.assets, props.bindings)
     : undefined;
+  const audioOutput = confirmedDetectedState
+    ? resolveStateAudio(confirmedDetectedState, props.assets, props.bindings)
+    : undefined;
   const anchorStyle = output ? createAnchorStyle(output.transform) : undefined;
   const statusText = createStatusText({
     confidence,
     detectedState: confirmedDetectedState,
     recognitionPhase
   });
+
+  playAudioRef.current = props.playAudio ?? playBuiltInAudio;
 
   useEffect(() => {
     return () => {
@@ -97,6 +108,45 @@ export function TestScreen(props: {
       updateStateTriggerCounter(current, confirmedDetectedState?.id)
     );
   }, [confirmedDetectedState?.id]);
+
+  useEffect(() => {
+    const stateId = confirmedDetectedState?.id;
+
+    if (!stateId) {
+      lastAudioStateIdRef.current = undefined;
+      setAudioMessage(undefined);
+      return undefined;
+    }
+
+    if (lastAudioStateIdRef.current === stateId) {
+      return undefined;
+    }
+
+    lastAudioStateIdRef.current = stateId;
+
+    if (!audioOutput?.audioId) {
+      setAudioMessage(undefined);
+      return undefined;
+    }
+
+    let ignored = false;
+
+    void Promise.resolve(playAudioRef.current(audioOutput.audioId))
+      .then(() => {
+        if (!ignored) {
+          setAudioMessage(undefined);
+        }
+      })
+      .catch(() => {
+        if (!ignored) {
+          setAudioMessage(AUDIO_PLAYBACK_BLOCKED_MESSAGE);
+        }
+      });
+
+    return () => {
+      ignored = true;
+    };
+  }, [audioOutput?.audioId, confirmedDetectedState?.id]);
 
   async function startAutomaticRecognition() {
     if (recognitionStartingOrRunning) {
@@ -268,6 +318,12 @@ export function TestScreen(props: {
         {statusText}
       </p>
 
+      {audioMessage && (
+        <p className="muted" role="alert">
+          {audioMessage}
+        </p>
+      )}
+
       <button className="secondary-button" onClick={props.onBackHome} type="button">
         返回首页
       </button>
@@ -359,10 +415,21 @@ function resolveStateOutput(
   state: TestState,
   assets: Asset[],
   bindings: StateBinding[]
-): ResolvedStateOutput {
+): ResolvedStateOutput | undefined {
   const resolved = createRuleEngine().resolve(state.id, bindings);
 
-  if (!resolved || resolved.action.type !== "show") {
+  if (!resolved) {
+    return {
+      message: `未找到${state.name} 的输出绑定。`,
+      transform: DEFAULT_OUTPUT_TRANSFORM
+    };
+  }
+
+  if (resolved.action.type === "playAudio") {
+    return undefined;
+  }
+
+  if (resolved.action.type !== "show") {
     return {
       message: `未找到${state.name} 的输出绑定。`,
       transform: DEFAULT_OUTPUT_TRANSFORM
@@ -381,6 +448,32 @@ function resolveStateOutput(
   return {
     asset,
     transform: resolved.action.transform
+  };
+}
+
+type ResolvedStateAudio = {
+  audioId: BuiltInAudioId;
+};
+
+function resolveStateAudio(
+  state: TestState,
+  assets: Asset[],
+  bindings: StateBinding[]
+): ResolvedStateAudio | undefined {
+  const resolved = createRuleEngine().resolve(state.id, bindings);
+
+  if (!resolved || resolved.action.type !== "playAudio") {
+    return undefined;
+  }
+
+  const asset = assets.find((item) => item.id === resolved.action.assetId);
+
+  if (asset?.type !== "audio" || !asset.audioId) {
+    return undefined;
+  }
+
+  return {
+    audioId: asset.audioId
   };
 }
 
