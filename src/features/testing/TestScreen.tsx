@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { playBuiltInAudio } from "../ar/audioCatalog";
 import { Model3DPreview } from "../ar/Model3DPreview";
 import { createScreenAnchorPlacement } from "../ar/screenAnchor";
-import { createRuleEngine } from "../authoring/ruleEngine";
 import type { RecognitionModel } from "../ml/classifierTypes";
 import type { Asset, BuiltInAudioId, StateBinding, Transform } from "../projects/projectTypes";
 import {
@@ -26,6 +25,14 @@ import {
 type TestState = {
   id: string;
   name: string;
+};
+
+type ShowStateBinding = StateBinding & {
+  action: Extract<StateBinding["action"], { type: "show" }>;
+};
+
+type AudioStateBinding = StateBinding & {
+  action: Extract<StateBinding["action"], { type: "playAudio" }>;
 };
 
 type RecognitionPhase = "idle" | "starting" | "running" | "failed";
@@ -416,38 +423,37 @@ function resolveStateOutput(
   assets: Asset[],
   bindings: StateBinding[]
 ): ResolvedStateOutput | undefined {
-  const resolved = createRuleEngine().resolve(state.id, bindings);
+  const binding = bindings.find(
+    (item): item is ShowStateBinding => item.stateId === state.id && isShowBinding(item)
+  );
 
-  if (!resolved) {
+  if (!binding) {
+    const hasAudioBinding = bindings.some(
+      (item) => item.stateId === state.id && isAudioBinding(item)
+    );
+
+    if (hasAudioBinding) {
+      return undefined;
+    }
+
     return {
       message: `未找到${state.name} 的输出绑定。`,
       transform: DEFAULT_OUTPUT_TRANSFORM
     };
   }
 
-  if (resolved.action.type === "playAudio") {
-    return undefined;
-  }
-
-  if (resolved.action.type !== "show") {
-    return {
-      message: `未找到${state.name} 的输出绑定。`,
-      transform: DEFAULT_OUTPUT_TRANSFORM
-    };
-  }
-
-  const asset = assets.find((item) => item.id === resolved.action.assetId);
+  const asset = assets.find((item) => item.id === binding.action.assetId);
 
   if (!asset) {
     return {
       message: `${state.name} 的素材为空。`,
-      transform: resolved.action.transform
+      transform: binding.action.transform
     };
   }
 
   return {
     asset,
-    transform: resolved.action.transform
+    transform: binding.action.transform
   };
 }
 
@@ -460,13 +466,15 @@ function resolveStateAudio(
   assets: Asset[],
   bindings: StateBinding[]
 ): ResolvedStateAudio | undefined {
-  const resolved = createRuleEngine().resolve(state.id, bindings);
+  const binding = bindings.find(
+    (item): item is AudioStateBinding => item.stateId === state.id && isAudioBinding(item)
+  );
 
-  if (!resolved || resolved.action.type !== "playAudio") {
+  if (!binding) {
     return undefined;
   }
 
-  const asset = assets.find((item) => item.id === resolved.action.assetId);
+  const asset = assets.find((item) => item.id === binding.action.assetId);
 
   if (asset?.type !== "audio" || !asset.audioId) {
     return undefined;
@@ -475,6 +483,14 @@ function resolveStateAudio(
   return {
     audioId: asset.audioId
   };
+}
+
+function isShowBinding(binding: StateBinding): binding is ShowStateBinding {
+  return binding.action.type === "show";
+}
+
+function isAudioBinding(binding: StateBinding): binding is AudioStateBinding {
+  return binding.action.type === "playAudio";
 }
 
 const DEFAULT_OUTPUT_TRANSFORM: Transform = {

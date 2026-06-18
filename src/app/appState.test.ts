@@ -362,6 +362,58 @@ describe("appReducer", () => {
     ]);
   });
 
+  it("stores visual outputs with an attached built-in audio cue", () => {
+    const state = appReducer(initialAppState, {
+      type: "saveTextOutputs",
+      outputs: {
+        state_a: {
+          content: "显示文字",
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          },
+          audio: {
+            audioId: "success",
+            name: "成功音"
+          }
+        }
+      }
+    });
+
+    expect(state.assets).toEqual([
+      expect.objectContaining({
+        id: "asset_text_state_a",
+        type: "text",
+        content: "显示文字"
+      }),
+      expect.objectContaining({
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "成功音",
+        audioId: "success"
+      })
+    ]);
+    expect(state.bindings).toEqual([
+      expect.objectContaining({
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: expect.objectContaining({
+          type: "show",
+          assetId: "asset_text_state_a"
+        })
+      }),
+      expect.objectContaining({
+        id: "binding_audio_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      })
+    ]);
+  });
+
   it("replaces a previous audio asset when saving another output for the same state", () => {
     const audioAsset = {
       id: "asset_audio_state_a",
@@ -403,6 +455,76 @@ describe("appReducer", () => {
     ]);
     expect(state.bindings).toEqual([
       expect.objectContaining({
+        stateId: "state_a",
+        action: expect.objectContaining({
+          type: "show",
+          assetId: "asset_text_state_a"
+        })
+      })
+    ]);
+  });
+
+  it("removes an attached audio cue when saving a plain visual output for the same state", () => {
+    const state = appReducer(
+      {
+        ...initialAppState,
+        assets: [
+          {
+            id: "asset_text_state_a",
+            type: "text",
+            name: "状态 A 文字",
+            content: "旧文字"
+          },
+          {
+            id: "asset_audio_state_a",
+            type: "audio",
+            name: "旧成功音",
+            audioId: "success"
+          }
+        ],
+        bindings: [
+          {
+            id: "binding_state_a",
+            stateId: "state_a",
+            action: {
+              type: "show",
+              assetId: "asset_text_state_a",
+              visible: true,
+              transform: {
+                position: [0, 0, 0],
+                rotation: [0, 0, 0],
+                scale: [1, 1, 1]
+              }
+            }
+          },
+          {
+            id: "binding_audio_state_a",
+            stateId: "state_a",
+            action: {
+              type: "playAudio",
+              assetId: "asset_audio_state_a"
+            }
+          }
+        ]
+      },
+      {
+        type: "saveTextOutputs",
+        outputs: {
+          state_a: "新的纯文字"
+        }
+      }
+    );
+
+    expect(state.assets).toEqual([
+      expect.objectContaining({
+        id: "asset_text_state_a",
+        type: "text",
+        content: "新的纯文字"
+      })
+    ]);
+    expect(state.bindings).toEqual([
+      expect.objectContaining({
+        id: "binding_state_a",
         stateId: "state_a",
         action: expect.objectContaining({
           type: "show",

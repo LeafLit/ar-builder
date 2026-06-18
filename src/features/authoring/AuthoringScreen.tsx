@@ -15,6 +15,14 @@ type AuthoringState = {
   name: string;
 };
 
+type ShowStateBinding = StateBinding & {
+  action: Extract<StateBinding["action"], { type: "show" }>;
+};
+
+type AudioStateBinding = StateBinding & {
+  action: Extract<StateBinding["action"], { type: "playAudio" }>;
+};
+
 const AUTHORING_STATES: AuthoringState[] = [
   { id: "state_a", name: "状态 A" },
   { id: "state_b", name: "状态 B" }
@@ -133,6 +141,38 @@ export function AuthoringScreen(props: {
           audioId: option.id,
           name: option.label,
           transform: cloneTransform(currentOutput.transform)
+        }
+      };
+    });
+  }
+
+  function updateAttachedAudio(stateId: string, audioId: string) {
+    setOutputs((current) => {
+      const currentOutput = current[stateId];
+
+      if (currentOutput.assetType === "audio") {
+        return current;
+      }
+
+      if (audioId === "none") {
+        const { audio: _audio, ...outputWithoutAudio } = currentOutput;
+
+        return {
+          ...current,
+          [stateId]: outputWithoutAudio
+        };
+      }
+
+      const option = getBuiltInAudioOption(audioId);
+
+      return {
+        ...current,
+        [stateId]: {
+          ...currentOutput,
+          audio: {
+            audioId: option.id,
+            name: option.label
+          }
         }
       };
     });
@@ -340,44 +380,61 @@ export function AuthoringScreen(props: {
               )}
 
               {output.assetType !== "audio" && (
-                <div className="anchor-controls" aria-label={`${state.name} 的屏幕锚点`}>
-                  <label className="range-field">
-                    <span>横向位置：{anchorValues.x}%</span>
-                    <input
-                      aria-label={`${state.name} 的横向位置`}
-                      max="100"
-                      min="-100"
-                      onChange={(event) => updateAnchor(state.id, "x", event.target.value)}
-                      step="5"
-                      type="range"
-                      value={anchorValues.x}
-                    />
+                <>
+                  <div className="anchor-controls" aria-label={`${state.name} 的屏幕锚点`}>
+                    <label className="range-field">
+                      <span>横向位置：{anchorValues.x}%</span>
+                      <input
+                        aria-label={`${state.name} 的横向位置`}
+                        max="100"
+                        min="-100"
+                        onChange={(event) => updateAnchor(state.id, "x", event.target.value)}
+                        step="5"
+                        type="range"
+                        value={anchorValues.x}
+                      />
+                    </label>
+                    <label className="range-field">
+                      <span>纵向位置：{anchorValues.y}%</span>
+                      <input
+                        aria-label={`${state.name} 的纵向位置`}
+                        max="100"
+                        min="-100"
+                        onChange={(event) => updateAnchor(state.id, "y", event.target.value)}
+                        step="5"
+                        type="range"
+                        value={anchorValues.y}
+                      />
+                    </label>
+                    <label className="range-field">
+                      <span>大小：{anchorValues.scale}%</span>
+                      <input
+                        aria-label={`${state.name} 的大小`}
+                        max="200"
+                        min="50"
+                        onChange={(event) => updateAnchor(state.id, "scale", event.target.value)}
+                        step="5"
+                        type="range"
+                        value={anchorValues.scale}
+                      />
+                    </label>
+                  </div>
+                  <label className="stack compact-stack">
+                    <span>{state.name} 的附加音效</span>
+                    <select
+                      aria-label={`${state.name} 的附加音效`}
+                      onChange={(event) => updateAttachedAudio(state.id, event.target.value)}
+                      value={getAttachedAudioValue(output)}
+                    >
+                      <option value="none">不播放音效</option>
+                      {BUILT_IN_AUDIO_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                  <label className="range-field">
-                    <span>纵向位置：{anchorValues.y}%</span>
-                    <input
-                      aria-label={`${state.name} 的纵向位置`}
-                      max="100"
-                      min="-100"
-                      onChange={(event) => updateAnchor(state.id, "y", event.target.value)}
-                      step="5"
-                      type="range"
-                      value={anchorValues.y}
-                    />
-                  </label>
-                  <label className="range-field">
-                    <span>大小：{anchorValues.scale}%</span>
-                    <input
-                      aria-label={`${state.name} 的大小`}
-                      max="200"
-                      min="50"
-                      onChange={(event) => updateAnchor(state.id, "scale", event.target.value)}
-                      step="5"
-                      type="range"
-                      value={anchorValues.scale}
-                    />
-                  </label>
-                </div>
+                </>
               )}
 
               {output.assetType === "model3d" && (
@@ -420,9 +477,15 @@ function getStateOutputDraft(
   assets: Asset[],
   bindings: StateBinding[]
 ): StateOutputDraft {
-  const binding = bindings.find((item) => item.stateId === stateId);
+  const showBinding = bindings.find(
+    (item): item is ShowStateBinding => item.stateId === stateId && isShowBinding(item)
+  );
+  const audioBinding = bindings.find(
+    (item): item is AudioStateBinding => item.stateId === stateId && isAudioBinding(item)
+  );
+  const attachedAudio = getAttachedAudioDraft(audioBinding, assets);
 
-  if (!binding) {
+  if (!showBinding && !audioBinding) {
     return {
       assetType: "text",
       content: "",
@@ -430,9 +493,8 @@ function getStateOutputDraft(
     };
   }
 
-  const asset = assets.find((item) => item.id === binding.action.assetId);
-
-  if (binding.action.type === "playAudio") {
+  if (!showBinding && audioBinding) {
+    const asset = assets.find((item) => item.id === audioBinding.action.assetId);
     const option = getBuiltInAudioOption(asset?.audioId);
 
     return {
@@ -443,7 +505,7 @@ function getStateOutputDraft(
     };
   }
 
-  if (binding.action.type !== "show") {
+  if (!showBinding) {
     return {
       assetType: "text",
       content: "",
@@ -451,12 +513,15 @@ function getStateOutputDraft(
     };
   }
 
+  const asset = assets.find((item) => item.id === showBinding.action.assetId);
+
   if (asset?.type === "image2d") {
     return {
       assetType: "image2d",
       name: asset.name,
       url: asset.url ?? "",
-      transform: cloneTransform(binding.action.transform)
+      transform: cloneTransform(showBinding.action.transform),
+      ...(attachedAudio ? { audio: attachedAudio } : {})
     };
   }
 
@@ -467,15 +532,44 @@ function getStateOutputDraft(
       assetType: "model3d",
       modelId: option.id,
       name: asset.name || option.label,
-      transform: cloneTransform(binding.action.transform)
+      transform: cloneTransform(showBinding.action.transform),
+      ...(attachedAudio ? { audio: attachedAudio } : {})
     };
   }
 
   return {
     assetType: "text",
     content: asset?.content ?? "",
-    transform: cloneTransform(binding.action.transform)
+    transform: cloneTransform(showBinding.action.transform),
+    ...(attachedAudio ? { audio: attachedAudio } : {})
   };
+}
+
+function getAttachedAudioDraft(binding: AudioStateBinding | undefined, assets: Asset[]) {
+  if (!binding) {
+    return undefined;
+  }
+
+  const asset = assets.find((item) => item.id === binding.action.assetId);
+
+  if (asset?.type !== "audio" || !asset.audioId) {
+    return undefined;
+  }
+
+  const option = getBuiltInAudioOption(asset.audioId);
+
+  return {
+    audioId: option.id,
+    name: asset.name || option.label
+  };
+}
+
+function isShowBinding(binding: StateBinding): binding is ShowStateBinding {
+  return binding.action.type === "show";
+}
+
+function isAudioBinding(binding: StateBinding): binding is AudioStateBinding {
+  return binding.action.type === "playAudio";
 }
 
 function isOutputReady(output: StateOutputDraft) {
@@ -526,7 +620,8 @@ function normalizeOutputForSave(output: StateOutputDraft): StateOutputDraft {
 
   return {
     content: output.content.trim(),
-    transform: cloneTransform(output.transform)
+    transform: cloneTransform(output.transform),
+    ...(output.audio ? { audio: { ...output.audio } } : {})
   };
 }
 
@@ -537,6 +632,10 @@ function createAnchorControlValues(transform: Transform) {
     scale: Math.round(transform.scale[0] * 100).toString(),
     rotationY: Math.round(radiansToDegrees(transform.rotation[1])).toString()
   };
+}
+
+function getAttachedAudioValue(output: StateOutputDraft) {
+  return output.assetType === "audio" ? "none" : output.audio?.audioId ?? "none";
 }
 
 function cloneTransform(transform: Transform): Transform {

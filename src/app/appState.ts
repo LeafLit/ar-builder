@@ -107,11 +107,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           `asset_audio_${stateId}`
         ])
       );
-      const outputAssets: Asset[] = stateIds.map((stateId) =>
-        createOutputAsset(stateId, normalizedOutputs[stateId])
+      const outputAssets: Asset[] = stateIds.flatMap((stateId) =>
+        createOutputAssets(stateId, normalizedOutputs[stateId])
       );
-      const outputBindings: StateBinding[] = stateIds.map((stateId) =>
-        createOutputBinding(stateId, normalizedOutputs[stateId])
+      const outputBindings: StateBinding[] = stateIds.flatMap((stateId) =>
+        createOutputBindings(stateId, normalizedOutputs[stateId])
       );
       const preservedAssets = state.assets.filter((asset) => !replaceAssetIds.has(asset.id));
       const preservedBindings = state.bindings.filter((binding) => !stateIds.includes(binding.stateId));
@@ -141,7 +141,8 @@ function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDra
       assetType: "image2d",
       name: output.name,
       url: output.url,
-      transform: cloneTransform(output.transform)
+      transform: cloneTransform(output.transform),
+      ...(output.audio ? { audio: { ...output.audio } } : {})
     };
   }
 
@@ -150,7 +151,8 @@ function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDra
       assetType: "model3d",
       modelId: output.modelId,
       name: output.name,
-      transform: cloneTransform(output.transform)
+      transform: cloneTransform(output.transform),
+      ...(output.audio ? { audio: { ...output.audio } } : {})
     };
   }
 
@@ -166,7 +168,8 @@ function normalizeStateOutput(output: string | StateOutputDraft): StateOutputDra
   return {
     assetType: "text",
     content: output.content,
-    transform: cloneTransform(output.transform)
+    transform: cloneTransform(output.transform),
+    ...(output.audio ? { audio: { ...output.audio } } : {})
   };
 }
 
@@ -186,21 +189,23 @@ function createOutputAssetId(stateId: string, output: StateOutputDraft) {
   return `asset_text_${stateId}`;
 }
 
-function createOutputBinding(stateId: string, output: StateOutputDraft): StateBinding {
+function createOutputBindings(stateId: string, output: StateOutputDraft): StateBinding[] {
   const assetId = createOutputAssetId(stateId, output);
 
   if (output.assetType === "audio") {
-    return {
-      id: `binding_${stateId}`,
-      stateId,
-      action: {
-        type: "playAudio",
-        assetId
+    return [
+      {
+        id: `binding_${stateId}`,
+        stateId,
+        action: {
+          type: "playAudio",
+          assetId
+        }
       }
-    };
+    ];
   }
 
-  return {
+  const bindings: StateBinding[] = [{
     id: `binding_${stateId}`,
     stateId,
     action: {
@@ -209,10 +214,41 @@ function createOutputBinding(stateId: string, output: StateOutputDraft): StateBi
       transform: output.transform,
       visible: true
     }
-  };
+  }];
+
+  if (output.audio) {
+    bindings.push({
+      id: `binding_audio_${stateId}`,
+      stateId,
+      action: {
+        type: "playAudio",
+        assetId: createAttachedAudioAssetId(stateId)
+      }
+    });
+  }
+
+  return bindings;
 }
 
-function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
+function createOutputAssets(stateId: string, output: StateOutputDraft): Asset[] {
+  const primaryAsset = createPrimaryOutputAsset(stateId, output);
+
+  if (output.assetType === "audio" || !output.audio) {
+    return [primaryAsset];
+  }
+
+  return [
+    primaryAsset,
+    {
+      id: createAttachedAudioAssetId(stateId),
+      type: "audio",
+      name: output.audio.name.trim() || `${stateId} 音效`,
+      audioId: output.audio.audioId
+    }
+  ];
+}
+
+function createPrimaryOutputAsset(stateId: string, output: StateOutputDraft): Asset {
   if (output.assetType === "image2d") {
     return {
       id: createOutputAssetId(stateId, output),
@@ -246,6 +282,10 @@ function createOutputAsset(stateId: string, output: StateOutputDraft): Asset {
     name: `${stateId} 文字`,
     content: output.content.trim()
   };
+}
+
+function createAttachedAudioAssetId(stateId: string) {
+  return `asset_audio_${stateId}`;
 }
 
 function cloneTransform(transform: Transform): Transform {

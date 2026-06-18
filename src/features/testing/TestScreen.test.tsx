@@ -71,6 +71,69 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A");
   });
 
+  it("shows a visual output and plays an attached audio cue for the same state", async () => {
+    const playAudio = vi.fn(async () => undefined);
+    const combinedAssets: Asset[] = [
+      {
+        id: "asset_text_state_a",
+        type: "text",
+        name: "状态 A 文字",
+        content: "视觉和音效一起触发"
+      },
+      {
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "成功音",
+        audioId: "success"
+      }
+    ];
+    const combinedBindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "show",
+          assetId: "asset_text_state_a",
+          visible: true,
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          }
+        }
+      },
+      {
+        id: "binding_audio_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      }
+    ];
+
+    render(
+      <TestScreen
+        assets={combinedAssets}
+        bindings={combinedBindings}
+        onBackHome={vi.fn()}
+        playAudio={playAudio}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(screen.getByText("视觉和音效一起触发")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(playAudio).toHaveBeenCalledWith("success");
+    });
+    expect(playAudio).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(playAudio).toHaveBeenCalledTimes(1);
+  });
+
   it("counts manual state entries without repeating the active state", () => {
     render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
 

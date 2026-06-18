@@ -32,10 +32,16 @@ export type Transform = {
   scale: [number, number, number];
 };
 
+export type AudioCueDraft = {
+  audioId: BuiltInAudioId;
+  name: string;
+};
+
 export type TextOutputDraft = {
   assetType?: "text";
   content: string;
   transform: Transform;
+  audio?: AudioCueDraft;
 };
 
 export type ImageOutputDraft = {
@@ -43,6 +49,7 @@ export type ImageOutputDraft = {
   name: string;
   url: string;
   transform: Transform;
+  audio?: AudioCueDraft;
 };
 
 export type Model3DOutputDraft = {
@@ -50,6 +57,7 @@ export type Model3DOutputDraft = {
   modelId: BuiltInModel3DId;
   name: string;
   transform: Transform;
+  audio?: AudioCueDraft;
 };
 
 export type AudioOutputDraft = {

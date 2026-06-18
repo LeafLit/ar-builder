@@ -230,6 +230,48 @@ describe("AuthoringScreen", () => {
     );
   });
 
+  it("saves a visual output with an attached built-in audio cue", () => {
+    const onSaveTextOutputs = vi.fn();
+
+    render(
+      <AuthoringScreen
+        assets={[]}
+        bindings={[]}
+        onNext={vi.fn()}
+        onSaveTextOutputs={onSaveTextOutputs}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("状态 A 的 AR 文字"), {
+      target: { value: "显示文字" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 A 的附加音效"), {
+      target: { value: "success" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 的 AR 文字"), {
+      target: { value: "状态 B 仍然显示文字" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
+    expect(onSaveTextOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_a: {
+          content: "显示文字",
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          },
+          audio: {
+            audioId: "success",
+            name: "成功音"
+          }
+        }
+      })
+    );
+  });
+
   it("loads existing text outputs for editing", () => {
     const assets: Asset[] = [
       {
@@ -384,5 +426,59 @@ describe("AuthoringScreen", () => {
 
     expect(screen.getByLabelText("状态 A 的输出类型")).toHaveValue("audio");
     expect(screen.getByLabelText("状态 A 的音效")).toHaveValue("alert");
+  });
+
+  it("loads an existing visual output with an attached built-in audio cue", () => {
+    const assets: Asset[] = [
+      {
+        id: "asset_text_state_a",
+        type: "text",
+        name: "状态 A 文字",
+        content: "已有文字"
+      },
+      {
+        id: "asset_audio_state_a",
+        type: "audio",
+        name: "警告音",
+        audioId: "alert"
+      }
+    ];
+    const bindings: StateBinding[] = [
+      {
+        id: "binding_state_a",
+        stateId: "state_a",
+        action: {
+          type: "show",
+          assetId: "asset_text_state_a",
+          visible: true,
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1]
+          }
+        }
+      },
+      {
+        id: "binding_audio_state_a",
+        stateId: "state_a",
+        action: {
+          type: "playAudio",
+          assetId: "asset_audio_state_a"
+        }
+      }
+    ];
+
+    render(
+      <AuthoringScreen
+        assets={assets}
+        bindings={bindings}
+        onNext={vi.fn()}
+        onSaveTextOutputs={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("状态 A 的输出类型")).toHaveValue("text");
+    expect(screen.getByLabelText("状态 A 的 AR 文字")).toHaveValue("已有文字");
+    expect(screen.getByLabelText("状态 A 的附加音效")).toHaveValue("alert");
   });
 });
