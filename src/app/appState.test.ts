@@ -26,6 +26,33 @@ describe("appReducer", () => {
     });
   });
 
+  it("starts with editable default state names", () => {
+    expect(initialAppState.states).toEqual([
+      { id: "state_a", name: "状态 A", order: 0 },
+      { id: "state_b", name: "状态 B", order: 1 }
+    ]);
+  });
+
+  it("renames a known state while keeping its id stable", () => {
+    const state = appReducer(initialAppState, {
+      type: "renameState",
+      stateId: "state_a",
+      name: "  拳头  "
+    });
+
+    expect(state.states[0]).toEqual({ id: "state_a", name: "拳头", order: 0 });
+  });
+
+  it("does not replace a state name with blank text", () => {
+    const state = appReducer(initialAppState, {
+      type: "renameState",
+      stateId: "state_a",
+      name: "   "
+    });
+
+    expect(state.states[0].name).toBe("状态 A");
+  });
+
   it("loads a saved project for editing", () => {
     const project: Project = {
       id: "project_saved",
@@ -35,7 +62,7 @@ describe("appReducer", () => {
       states: [
         {
           id: "state_a",
-          name: "状态 A",
+          name: "拳头",
           order: 0,
           sampleIds: ["sample_1"]
         }
@@ -59,6 +86,10 @@ describe("appReducer", () => {
       state_a: 1,
       state_b: 0
     });
+    expect(state.states).toEqual([
+      { id: "state_a", name: "拳头", order: 0 },
+      { id: "state_b", name: "状态 B", order: 1 }
+    ]);
     expect(state.assets).toEqual(project.assets);
   });
 

@@ -74,6 +74,10 @@ export function App({ projectRepository = createProjectRepository() }: { project
         {state.screen === "capture" && (
           <CaptureScreen
             projectId={state.projectId}
+            states={state.states}
+            onStateNameChange={(stateId, name) =>
+              dispatch({ type: "renameState", stateId, name })
+            }
             onSampleCaptured={(stateId, count) =>
               dispatch({ type: "recordSample", stateId, count })
             }
@@ -84,6 +88,7 @@ export function App({ projectRepository = createProjectRepository() }: { project
         {state.screen === "train" && (
           <TrainScreen
             projectId={state.projectId}
+            states={state.states}
             sampleCounts={state.sampleCounts}
             trainer={trainer}
             onModelTrained={(model) => dispatch({ type: "storeRecognitionModel", model })}
@@ -96,6 +101,7 @@ export function App({ projectRepository = createProjectRepository() }: { project
             <AuthoringScreen
               assets={state.assets}
               bindings={state.bindings}
+              states={state.states}
               onSaveTextOutputs={(outputs) => dispatch({ type: "saveTextOutputs", outputs })}
               onNext={() => dispatch({ type: "goTo", screen: "test" })}
             />
@@ -124,6 +130,7 @@ export function App({ projectRepository = createProjectRepository() }: { project
             <TestScreen
               assets={state.assets}
               bindings={state.bindings}
+              states={state.states}
               recognitionModel={state.recognitionModel}
               recognitionSensitivity={state.settings.recognitionSensitivity}
               onRecognitionSensitivityChange={(recognitionSensitivity) =>

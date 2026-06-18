@@ -6,15 +6,13 @@ import {
 } from "../features/ml/recognitionModelSnapshot";
 import {
   normalizeProjectSettings,
-  type InputState,
   type Project
 } from "../features/projects/projectTypes";
+import {
+  createDefaultSampleCounts,
+  normalizeEditableProjectStates
+} from "../features/projects/projectStates";
 import { createId } from "../shared/id";
-
-const DEFAULT_PROJECT_STATES = [
-  { id: "state_a", name: "状态 A", order: 0 },
-  { id: "state_b", name: "状态 B", order: 1 }
-] as const;
 
 type CreateProjectOptions = {
   name: string;
@@ -27,13 +25,14 @@ export function createProjectFromAppState(
 ): Project {
   const timestamp = now();
   const recognitionModel = serializeRecognitionModel(state.recognitionModel);
+  const states = normalizeEditableProjectStates(state.states);
 
   return {
     id: state.projectId ?? createId("project"),
     name,
     createdAt: timestamp,
     updatedAt: timestamp,
-    states: DEFAULT_PROJECT_STATES.map((projectState) => ({
+    states: states.map((projectState) => ({
       ...projectState,
       sampleIds: createSampleIds(projectState.id, state.sampleCounts[projectState.id] ?? 0)
     })),
@@ -45,12 +44,15 @@ export function createProjectFromAppState(
 }
 
 export function restoreStateFromProject(project: Project): AppState {
+  const states = normalizeEditableProjectStates(project.states);
+
   return {
     ...initialAppState,
     screen: "author",
     projectId: project.id,
+    states,
     sampleCounts: {
-      ...initialAppState.sampleCounts,
+      ...createDefaultSampleCounts(states),
       ...Object.fromEntries(project.states.map((state) => [state.id, state.sampleIds.length]))
     },
     assets: project.assets,

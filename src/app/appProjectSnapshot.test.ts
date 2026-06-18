@@ -1,5 +1,5 @@
 import { createProjectFromAppState, restoreStateFromProject } from "./appProjectSnapshot";
-import type { AppState } from "./appState";
+import { initialAppState, type AppState } from "./appState";
 import type { Project } from "../features/projects/projectTypes";
 import { createEmbeddingClassifier } from "../features/ml/embeddingClassifier";
 
@@ -8,6 +8,7 @@ describe("appProjectSnapshot", () => {
     const state: AppState = {
       screen: "test",
       projectId: "project_existing",
+      states: initialAppState.states,
       sampleCounts: {
         state_a: 2,
         state_b: 1
@@ -77,6 +78,7 @@ describe("appProjectSnapshot", () => {
     const state: AppState = {
       screen: "test",
       projectId: "project_existing",
+      states: initialAppState.states,
       sampleCounts: {
         state_a: 0,
         state_b: 0
@@ -96,6 +98,45 @@ describe("appProjectSnapshot", () => {
     expect(project.settings).toEqual({
       recognitionSensitivity: 100
     });
+  });
+
+  it("saves custom state names into project states", () => {
+    const project = createProjectFromAppState(
+      {
+        ...initialAppState,
+        states: [
+          { id: "state_a", name: "拳头", order: 0 },
+          { id: "state_b", name: "巴掌", order: 1 }
+        ],
+        sampleCounts: { state_a: 2, state_b: 1 }
+      },
+      { name: "命名状态项目", now: () => "2026-06-18T00:00:00.000Z" }
+    );
+
+    expect(project.states.map(({ id, name, order }) => ({ id, name, order }))).toEqual([
+      { id: "state_a", name: "拳头", order: 0 },
+      { id: "state_b", name: "巴掌", order: 1 }
+    ]);
+  });
+
+  it("restores custom state names from a saved project", () => {
+    const restored = restoreStateFromProject({
+      id: "project_1",
+      name: "命名状态项目",
+      createdAt: "2026-06-18T00:00:00.000Z",
+      updatedAt: "2026-06-18T00:00:00.000Z",
+      states: [
+        { id: "state_a", name: "拳头", order: 0, sampleIds: [] },
+        { id: "state_b", name: "巴掌", order: 1, sampleIds: [] }
+      ],
+      assets: [],
+      bindings: []
+    });
+
+    expect(restored.states).toEqual([
+      { id: "state_a", name: "拳头", order: 0 },
+      { id: "state_b", name: "巴掌", order: 1 }
+    ]);
   });
 
   it("restores a saved project into the authoring screen", () => {
@@ -177,6 +218,7 @@ describe("appProjectSnapshot", () => {
     const state: AppState = {
       screen: "test",
       projectId: "project_with_model",
+      states: initialAppState.states,
       sampleCounts: {
         state_a: 1,
         state_b: 1

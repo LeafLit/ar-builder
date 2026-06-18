@@ -46,6 +46,36 @@ describe("App", () => {
     expect(screen.getByText("状态 A 的提示")).toBeInTheDocument();
   });
 
+  it("carries renamed state labels from capture into authoring and testing", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "新建项目" }));
+    fireEvent.change(screen.getByLabelText("状态 A 名称"), {
+      target: { value: "拳头" }
+    });
+    fireEvent.change(screen.getByLabelText("状态 B 名称"), {
+      target: { value: "巴掌" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "下一步：训练" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始训练" }));
+    fireEvent.click(await screen.findByRole("button", { name: "下一步：编辑" }));
+
+    fireEvent.change(screen.getByLabelText("拳头 的 AR 文字"), {
+      target: { value: "拳头输出" }
+    });
+    fireEvent.change(screen.getByLabelText("巴掌 的 AR 文字"), {
+      target: { value: "巴掌输出" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步：测试" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别拳头" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("当前识别：拳头");
+    expect(screen.getByText("拳头输出")).toBeInTheDocument();
+  });
+
   it("saves and reopens a local project for editing", async () => {
     const savedProjects: Project[] = [];
     const repository: ProjectRepository = {

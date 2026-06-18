@@ -21,10 +21,12 @@ import {
   resetStateTriggerCounter,
   updateStateTriggerCounter
 } from "./stateTriggerCounter";
+import { DEFAULT_PROJECT_STATES } from "../projects/projectStates";
 
 type TestState = {
   id: string;
   name: string;
+  order?: number;
 };
 
 type ShowStateBinding = StateBinding & {
@@ -37,10 +39,6 @@ type AudioStateBinding = StateBinding & {
 
 type RecognitionPhase = "idle" | "starting" | "running" | "failed";
 
-const TEST_STATES: TestState[] = [
-  { id: "state_a", name: "状态 A" },
-  { id: "state_b", name: "状态 B" }
-];
 const SENSITIVITY_STEP = 5;
 const AUDIO_PLAYBACK_BLOCKED_MESSAGE = "音效播放被浏览器阻止，请点一下页面后重试。";
 
@@ -52,6 +50,7 @@ type CameraRecognizerFactory = (
 export function TestScreen(props: {
   assets: Asset[];
   bindings: StateBinding[];
+  states?: TestState[];
   recognitionModel?: RecognitionModel;
   recognizer?: StateRecognizer;
   createCameraRecognizer?: CameraRecognizerFactory;
@@ -64,6 +63,7 @@ export function TestScreen(props: {
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const lastAudioStateIdRef = useRef<string | undefined>(undefined);
   const playAudioRef = useRef(props.playAudio ?? playBuiltInAudio);
+  const states = props.states ?? DEFAULT_PROJECT_STATES;
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
   const [audioMessage, setAudioMessage] = useState<string | undefined>();
@@ -75,7 +75,7 @@ export function TestScreen(props: {
     createInitialStableRecognitionState
   );
   const [triggerCounter, setTriggerCounter] = useState(() =>
-    createInitialStateTriggerCounter(TEST_STATES.map((state) => state.id))
+    createInitialStateTriggerCounter(states.map((state) => state.id))
   );
   const recognitionSensitivity =
     props.recognitionSensitivity ?? localRecognitionSensitivity;
@@ -85,7 +85,7 @@ export function TestScreen(props: {
   const recognitionThresholdRef = useRef(recognitionThreshold);
   recognitionThresholdRef.current = recognitionThreshold;
   const confirmedDetectedState = stableRecognition.confirmedStateId
-    ? findTestState(stableRecognition.confirmedStateId)
+    ? findTestState(states, stableRecognition.confirmedStateId)
     : detectedState && confidence === undefined
     ? detectedState
     : undefined;
@@ -173,7 +173,7 @@ export function TestScreen(props: {
         video: videoRef.current
       });
       const session = await recognizer.start((prediction) => {
-        setDetectedState(findTestState(prediction.stateId));
+        setDetectedState(findTestState(states, prediction.stateId));
         setConfidence(prediction.confidence);
         setStableRecognition((current) =>
           updateStableRecognition(
@@ -252,7 +252,7 @@ export function TestScreen(props: {
       </div>
 
       <div className="state-grid">
-        {TEST_STATES.map((state) => (
+        {states.map((state) => (
           <button
             className="state-button"
             key={state.id}
@@ -304,7 +304,7 @@ export function TestScreen(props: {
           </button>
         </div>
         <div className="counter-list">
-          {TEST_STATES.map((state) => {
+          {states.map((state) => {
             const count = triggerCounter.counts[state.id] ?? 0;
 
             return (
@@ -366,8 +366,8 @@ function createStatusText(input: {
   return "等待识别状态。";
 }
 
-function findTestState(stateId: string): TestState {
-  return TEST_STATES.find((state) => state.id === stateId) ?? {
+function findTestState(states: TestState[], stateId: string): TestState {
+  return states.find((state) => state.id === stateId) ?? {
     id: stateId,
     name: stateId
   };

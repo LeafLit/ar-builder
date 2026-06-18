@@ -3,6 +3,38 @@ import type { Asset, StateBinding } from "../projects/projectTypes";
 import { AuthoringScreen } from "./AuthoringScreen";
 
 describe("AuthoringScreen", () => {
+  it("uses custom state names for authoring controls and keeps state ids on save", () => {
+    const onSaveTextOutputs = vi.fn();
+
+    render(
+      <AuthoringScreen
+        assets={[]}
+        bindings={[]}
+        states={[
+          { id: "state_a", name: "拳头", order: 0 },
+          { id: "state_b", name: "巴掌", order: 1 }
+        ]}
+        onNext={vi.fn()}
+        onSaveTextOutputs={onSaveTextOutputs}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("拳头 的 AR 文字"), {
+      target: { value: "拳头输出" }
+    });
+    fireEvent.change(screen.getByLabelText("巴掌 的 AR 文字"), {
+      target: { value: "巴掌输出" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存绑定" }));
+
+    expect(onSaveTextOutputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state_a: expect.objectContaining({ content: "拳头输出" }),
+        state_b: expect.objectContaining({ content: "巴掌输出" })
+      })
+    );
+  });
+
   it("saves text outputs for both states and unlocks testing", () => {
     const onSaveTextOutputs = vi.fn();
     const onNext = vi.fn();

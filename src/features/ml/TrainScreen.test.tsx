@@ -84,6 +84,26 @@ describe("TrainScreen", () => {
     ).toBeInTheDocument();
   });
 
+  it("uses custom state names in sample summaries and missing sample hints", () => {
+    render(
+      <TrainScreen
+        states={[
+          { id: "state_a", name: "拳头", order: 0 },
+          { id: "state_b", name: "巴掌", order: 1 }
+        ]}
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 2, state_b: 0 }}
+      />
+    );
+
+    expect(screen.getByText("拳头：2 个样本")).toBeInTheDocument();
+    expect(screen.getByText("巴掌：0 个样本")).toBeInTheDocument();
+    expect(
+      screen.getByText("真实训练需要每个状态至少 1 个样本。当前缺少：巴掌。")
+    ).toBeInTheDocument();
+  });
+
   it("confirms when every state has enough samples for real training", () => {
     render(
       <TrainScreen

@@ -9,10 +9,12 @@ import type {
   StateOutputDraft,
   Transform
 } from "../projects/projectTypes";
+import { DEFAULT_PROJECT_STATES } from "../projects/projectStates";
 
 type AuthoringState = {
   id: string;
   name: string;
+  order?: number;
 };
 
 type ShowStateBinding = StateBinding & {
@@ -23,11 +25,6 @@ type AudioStateBinding = StateBinding & {
   action: Extract<StateBinding["action"], { type: "playAudio" }>;
 };
 
-const AUTHORING_STATES: AuthoringState[] = [
-  { id: "state_a", name: "状态 A" },
-  { id: "state_b", name: "状态 B" }
-];
-
 const DEFAULT_TEXT_TRANSFORM: Transform = {
   position: [0, 0, 0],
   rotation: [0, 0, 0],
@@ -37,26 +34,28 @@ const DEFAULT_TEXT_TRANSFORM: Transform = {
 export function AuthoringScreen(props: {
   assets: Asset[];
   bindings: StateBinding[];
+  states?: AuthoringState[];
   imageReader?: (file: File) => Promise<string>;
   onSaveTextOutputs: (outputs: Record<string, StateOutputDraft>) => void;
   onNext: () => void;
 }) {
+  const states = props.states ?? DEFAULT_PROJECT_STATES;
   const [outputs, setOutputs] = useState<Record<string, StateOutputDraft>>(() =>
     Object.fromEntries(
-      AUTHORING_STATES.map((state) => [
+      states.map((state) => [
         state.id,
         getStateOutputDraft(state.id, props.assets, props.bindings)
       ])
     )
   );
   const [saved, setSaved] = useState(props.bindings.length > 0);
-  const filledOutputCount = AUTHORING_STATES.filter((state) => isOutputReady(outputs[state.id]))
+  const filledOutputCount = states.filter((state) => isOutputReady(outputs[state.id]))
     .length;
-  const canSave = filledOutputCount === AUTHORING_STATES.length;
+  const canSave = filledOutputCount === states.length;
 
   function saveBindings() {
     const trimmedOutputs = Object.fromEntries(
-      AUTHORING_STATES.map((state) => [
+      states.map((state) => [
         state.id,
         normalizeOutputForSave(outputs[state.id])
       ])
@@ -289,7 +288,7 @@ export function AuthoringScreen(props: {
       </div>
 
       <div className="binding-list">
-        {AUTHORING_STATES.map((state) => {
+        {states.map((state) => {
           const output = outputs[state.id];
           const anchorValues = createAnchorControlValues(output.transform);
 

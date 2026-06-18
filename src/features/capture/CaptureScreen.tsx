@@ -1,21 +1,23 @@
 import { useRef, useState } from "react";
 import { createCameraService, type CameraService } from "./cameraService";
 import { createSampleStore, type SampleStore } from "./sampleStore";
+import {
+  createDefaultSampleCounts,
+  DEFAULT_PROJECT_STATES
+} from "../projects/projectStates";
 
 type CaptureState = {
   id: string;
   name: string;
+  order?: number;
 };
-
-const DEFAULT_STATES: CaptureState[] = [
-  { id: "state_a", name: "状态 A" },
-  { id: "state_b", name: "状态 B" }
-];
 
 export function CaptureScreen(props: {
   projectId?: string;
   cameraService?: CameraService;
   sampleStore?: SampleStore;
+  states?: CaptureState[];
+  onStateNameChange?: (stateId: string, name: string) => void;
   onSampleCaptured?: (stateId: string, count: number) => void;
   onNext: () => void;
 }) {
@@ -24,15 +26,16 @@ export function CaptureScreen(props: {
   const cameraService = props.cameraService ?? createCameraService();
   const sampleStore = props.sampleStore ?? createSampleStore();
   const projectId = props.projectId ?? "local_project";
-  const [selectedStateId, setSelectedStateId] = useState(DEFAULT_STATES[0].id);
-  const [sampleCounts, setSampleCounts] = useState<Record<string, number>>({
-    state_a: 0,
-    state_b: 0
-  });
+  const states = props.states ?? DEFAULT_PROJECT_STATES;
+  const [selectedStateId, setSelectedStateId] = useState(states[0]?.id ?? "state_a");
+  const [sampleCounts, setSampleCounts] = useState<Record<string, number>>(() =>
+    createDefaultSampleCounts(states)
+  );
   const [cameraReady, setCameraReady] = useState(false);
   const [status, setStatus] = useState("先开启摄像头，然后为每个状态采集样本。");
 
-  const selectedState = DEFAULT_STATES.find((state) => state.id === selectedStateId);
+  const selectedState =
+    states.find((state) => state.id === selectedStateId) ?? states[0];
 
   async function startCamera() {
     if (!videoRef.current) {
@@ -84,8 +87,23 @@ export function CaptureScreen(props: {
 
       <div className="panel stack">
         <h2>选择状态</h2>
+        <div className="state-name-list">
+          {states.map((state) => (
+            <label className="stack compact-stack" key={state.id}>
+              <span>{state.name} 名称</span>
+              <input
+                aria-label={`${state.name} 名称`}
+                onChange={(event) =>
+                  props.onStateNameChange?.(state.id, event.target.value)
+                }
+                type="text"
+                value={state.name}
+              />
+            </label>
+          ))}
+        </div>
         <div className="state-grid">
-          {DEFAULT_STATES.map((state) => (
+          {states.map((state) => (
             <button
               className={state.id === selectedStateId ? "state-button active" : "state-button"}
               key={state.id}

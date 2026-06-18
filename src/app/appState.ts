@@ -9,12 +9,19 @@ import type {
 import type { RecognitionModel } from "../features/ml/classifierTypes";
 import { restoreRecognitionModel } from "../features/ml/recognitionModelSnapshot";
 import { normalizeProjectSettings } from "../features/projects/projectTypes";
+import {
+  createDefaultSampleCounts,
+  DEFAULT_PROJECT_STATES,
+  normalizeEditableProjectStates,
+  type EditableProjectState
+} from "../features/projects/projectStates";
 
 export type AppScreen = "home" | "capture" | "train" | "author" | "test";
 
 export type AppState = {
   screen: AppScreen;
   projectId?: string;
+  states: EditableProjectState[];
   sampleCounts: Record<string, number>;
   assets: Asset[];
   bindings: StateBinding[];
@@ -25,6 +32,7 @@ export type AppState = {
 export type AppAction =
   | { type: "goTo"; screen: AppScreen }
   | { type: "selectProject"; projectId: string }
+  | { type: "renameState"; stateId: string; name: string }
   | { type: "recordSample"; stateId: string; count: number }
   | { type: "saveTextOutputs"; outputs: Record<string, string | StateOutputDraft> }
   | { type: "storeRecognitionModel"; model: RecognitionModel }
@@ -39,10 +47,8 @@ const DEFAULT_TEXT_TRANSFORM: Transform = {
 
 export const initialAppState: AppState = {
   screen: "home",
-  sampleCounts: {
-    state_a: 0,
-    state_b: 0
-  },
+  states: DEFAULT_PROJECT_STATES,
+  sampleCounts: createDefaultSampleCounts(),
   assets: [],
   bindings: [],
   settings: normalizeProjectSettings()
@@ -54,13 +60,30 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, screen: action.screen };
     case "selectProject":
       return { ...state, projectId: action.projectId };
-    case "loadProject":
+    case "renameState": {
+      const name = action.name.trim();
+
+      if (!name || !state.states.some((item) => item.id === action.stateId)) {
+        return state;
+      }
+
+      return {
+        ...state,
+        states: state.states.map((item) =>
+          item.id === action.stateId ? { ...item, name } : item
+        )
+      };
+    }
+    case "loadProject": {
+      const states = normalizeEditableProjectStates(action.project.states);
+
       return {
         ...state,
         screen: "author",
         projectId: action.project.id,
+        states,
         sampleCounts: {
-          ...initialAppState.sampleCounts,
+          ...createDefaultSampleCounts(states),
           ...Object.fromEntries(
             action.project.states.map((projectState) => [
               projectState.id,
@@ -73,6 +96,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         recognitionModel: restoreRecognitionModel(action.project.recognitionModel),
         settings: normalizeProjectSettings(action.project.settings)
       };
+    }
     case "recordSample":
       return {
         ...state,

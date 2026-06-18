@@ -1,5 +1,9 @@
 import { useState } from "react";
 import type { RecognitionModel } from "./classifierTypes";
+import {
+  createDefaultSampleCounts,
+  DEFAULT_PROJECT_STATES
+} from "../projects/projectStates";
 
 export type TrainingSummary = {
   stateCount: number;
@@ -14,9 +18,10 @@ export type ModelTrainer = {
   train(projectId: string): Promise<TrainingResult>;
 };
 
-const STATE_LABELS: Record<string, string> = {
-  state_a: "状态 A",
-  state_b: "状态 B"
+type TrainingState = {
+  id: string;
+  name: string;
+  order?: number;
 };
 
 function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTrainer {
@@ -30,30 +35,34 @@ function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTraine
   };
 }
 
-function createTrainingRequirementMessage(sampleCounts: Record<string, number>) {
-  const entries = Object.entries(sampleCounts);
-  const missingStates = entries
-    .filter(([, count]) => count <= 0)
-    .map(([stateId]) => STATE_LABELS[stateId] ?? stateId);
+function createTrainingRequirementMessage(
+  sampleCounts: Record<string, number>,
+  states: TrainingState[]
+) {
+  const missingStates = states
+    .filter((state) => (sampleCounts[state.id] ?? 0) <= 0)
+    .map((state) => state.name);
 
   if (missingStates.length > 0) {
     return `真实训练需要每个状态至少 1 个样本。当前缺少：${missingStates.join("、")}。`;
   }
 
-  return `已满足真实训练条件：${entries.length} 个状态都有样本。`;
+  return `已满足真实训练条件：${states.length} 个状态都有样本。`;
 }
 
 export function TrainScreen(props: {
   projectId?: string;
+  states?: TrainingState[];
   sampleCounts?: Record<string, number>;
   trainer?: ModelTrainer;
   onModelTrained?: (model: RecognitionModel) => void;
   onNext: () => void;
 }) {
   const projectId = props.projectId ?? "local_project";
-  const sampleCounts = props.sampleCounts ?? { state_a: 0, state_b: 0 };
+  const states = props.states ?? DEFAULT_PROJECT_STATES;
+  const sampleCounts = props.sampleCounts ?? createDefaultSampleCounts(states);
   const trainer = props.trainer ?? createDefaultTrainer(sampleCounts);
-  const trainingRequirementMessage = createTrainingRequirementMessage(sampleCounts);
+  const trainingRequirementMessage = createTrainingRequirementMessage(sampleCounts, states);
   const [status, setStatus] = useState("准备好后点击开始训练。");
   const [isTraining, setIsTraining] = useState(false);
   const [trained, setTrained] = useState(false);
@@ -85,8 +94,11 @@ export function TrainScreen(props: {
           App 会根据采集到的样本学习每个状态，训练完成后就可以把状态绑定到 AR 输出。
         </p>
         <div className="state-grid">
-          <div className="state-summary">状态 A：{sampleCounts.state_a ?? 0} 个样本</div>
-          <div className="state-summary">状态 B：{sampleCounts.state_b ?? 0} 个样本</div>
+          {states.map((state) => (
+            <div className="state-summary" key={state.id}>
+              {state.name}：{sampleCounts[state.id] ?? 0} 个样本
+            </div>
+          ))}
         </div>
         <p className="training-hint">{trainingRequirementMessage}</p>
         <p className="muted" role="status">

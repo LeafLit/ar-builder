@@ -71,6 +71,45 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A");
   });
 
+  it("uses custom state names in manual recognition status and counters", () => {
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        states={[
+          { id: "state_a", name: "拳头", order: 0 },
+          { id: "state_b", name: "巴掌", order: 1 }
+        ]}
+        onBackHome={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("拳头 触发 0 次")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别拳头" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("当前识别：拳头");
+    expect(screen.getByLabelText("拳头 触发 1 次")).toBeInTheDocument();
+  });
+
+  it("uses custom state names in missing binding messages", () => {
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings.filter((binding) => binding.stateId !== "state_b")}
+        states={[
+          { id: "state_a", name: "拳头", order: 0 },
+          { id: "state_b", name: "巴掌", order: 1 }
+        ]}
+        onBackHome={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别巴掌" }));
+
+    expect(screen.getByText("未找到巴掌 的输出绑定。")).toBeInTheDocument();
+  });
+
   it("shows a visual output and plays an attached audio cue for the same state", async () => {
     const playAudio = vi.fn(async () => undefined);
     const combinedAssets: Asset[] = [
