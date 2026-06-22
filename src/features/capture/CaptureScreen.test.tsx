@@ -199,10 +199,44 @@ describe("CaptureScreen", () => {
     expect(screen.getByAltText("状态 A 样本 1 大图")).toHaveClass(
       "sample-preview-large-image"
     );
+    expect(
+      screen.getByRole("dialog", { name: "状态 A 样本 1 大图" }).closest(".sample-card")
+    ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "关闭大图" }));
 
     expect(screen.queryByRole("dialog", { name: "状态 A 样本 1 大图" })).not.toBeInTheDocument();
+  });
+
+  it("keeps many samples inside a bounded review list", async () => {
+    const sampleStore = createFakeSampleStore();
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a"
+        ? Array.from({ length: 24 }, (_, index) => ({
+            id: `sample_${index + 1}`,
+            projectId: "project_1",
+            stateId: "state_a",
+            createdAt: `2026-06-10T00:${String(index).padStart(2, "0")}:00.000Z`,
+            blob: new Blob(["sample"], { type: "image/jpeg" })
+          }))
+        : []
+    );
+
+    render(
+      <CaptureScreen
+        sampleStore={sampleStore}
+        projectId="project_1"
+        onNext={vi.fn()}
+      />
+    );
+
+    const sampleList = await screen.findByRole("region", {
+      name: "状态 A 样本列表，24 个样本"
+    });
+
+    expect(sampleList).toHaveClass("sample-list");
+    expect(sampleList).toHaveClass("sample-list-scroll");
+    expect(screen.getByRole("button", { name: "状态 A 24 个样本" })).toBeInTheDocument();
   });
 
   it("deletes a bad sample and updates the selected state count", async () => {

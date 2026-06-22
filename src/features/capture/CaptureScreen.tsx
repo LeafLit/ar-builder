@@ -47,11 +47,16 @@ export function CaptureScreen(props: {
   const [stateNameDrafts, setStateNameDrafts] = useState<Record<string, string>>(() =>
     createStateNameDrafts(states)
   );
+  const [largePreview, setLargePreview] = useState<{
+    label: string;
+    url: string;
+  } | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [status, setStatus] = useState("先开启摄像头，然后为每个状态采集样本。");
 
   const selectedState =
     states.find((state) => state.id === selectedStateId) ?? states[0];
+  const selectedSamples = samplesByState[selectedState?.id ?? ""] ?? [];
 
   useEffect(() => {
     setStateNameDrafts(createStateNameDrafts(states));
@@ -239,13 +244,18 @@ export function CaptureScreen(props: {
         <p className="muted">
           当前查看：{selectedState?.name ?? "未选择状态"}。拍坏的样本可以删除，再重新采集。
         </p>
-        {(samplesByState[selectedState?.id ?? ""] ?? []).length > 0 ? (
-          <div className="sample-list">
-            {(samplesByState[selectedState?.id ?? ""] ?? []).map((sample, index) => (
+        {selectedSamples.length > 0 ? (
+          <div
+            aria-label={`${selectedState?.name ?? "状态"} 样本列表，${selectedSamples.length} 个样本`}
+            className="sample-list sample-list-scroll"
+            role="region"
+          >
+            {selectedSamples.map((sample, index) => (
               <SamplePreview
                 index={index}
                 key={sample.id}
                 onDelete={() => deleteSample(sample)}
+                onOpenLargePreview={setLargePreview}
                 sample={sample}
                 stateName={selectedState?.name ?? "状态"}
               />
@@ -259,6 +269,30 @@ export function CaptureScreen(props: {
       <button className="primary-button" onClick={props.onNext} type="button">
         下一步：训练
       </button>
+
+      {largePreview && (
+        <div
+          aria-label={`${largePreview.label} 大图`}
+          aria-modal="true"
+          className="sample-preview-dialog"
+          role="dialog"
+        >
+          <div className="sample-preview-dialog-content">
+            <img
+              alt={`${largePreview.label} 大图`}
+              className="sample-preview-large-image"
+              src={largePreview.url}
+            />
+            <button
+              className="primary-button"
+              onClick={() => setLargePreview(null)}
+              type="button"
+            >
+              关闭大图
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -270,16 +304,17 @@ function createStateNameDrafts(states: CaptureState[]) {
 function SamplePreview({
   index,
   onDelete,
+  onOpenLargePreview,
   sample,
   stateName
 }: {
   index: number;
   onDelete: () => void;
+  onOpenLargePreview: (preview: { label: string; url: string }) => void;
   sample: TrainingSampleRecord;
   stateName: string;
 }) {
   const [previewUrl, setPreviewUrl] = useState("");
-  const [isLargePreviewOpen, setIsLargePreviewOpen] = useState(false);
   const sampleNumber = index + 1;
   const sampleLabel = `${stateName} 样本 ${sampleNumber}`;
 
@@ -299,7 +334,7 @@ function SamplePreview({
         <button
           aria-label={`放大查看 ${sampleLabel}`}
           className="sample-thumbnail-button"
-          onClick={() => setIsLargePreviewOpen(true)}
+          onClick={() => onOpenLargePreview({ label: sampleLabel, url: previewUrl })}
           type="button"
         >
           <img alt={sampleLabel} src={previewUrl} />
@@ -316,29 +351,6 @@ function SamplePreview({
           删除 {stateName} 样本 {sampleNumber}
         </button>
       </div>
-      {isLargePreviewOpen && previewUrl && (
-        <div
-          aria-label={`${sampleLabel} 大图`}
-          aria-modal="true"
-          className="sample-preview-dialog"
-          role="dialog"
-        >
-          <div className="sample-preview-dialog-content">
-            <img
-              alt={`${sampleLabel} 大图`}
-              className="sample-preview-large-image"
-              src={previewUrl}
-            />
-            <button
-              className="primary-button"
-              onClick={() => setIsLargePreviewOpen(false)}
-              type="button"
-            >
-              关闭大图
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

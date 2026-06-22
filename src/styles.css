@@ -166,19 +166,26 @@ textarea {
   gap: 10px;
 }
 
+.sample-list-scroll {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
 .sample-card {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 84px 1fr;
   gap: 10px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 10px;
+  padding: 8px;
   background: #f8fafc;
 }
 
 .sample-thumbnail-button {
-  width: 96px;
-  height: 96px;
+  width: 84px;
+  height: 84px;
   border: 0;
   border-radius: 8px;
   padding: 0;
@@ -192,8 +199,8 @@ textarea {
 }
 
 .sample-card img {
-  width: 96px;
-  height: 96px;
+  width: 84px;
+  height: 84px;
   border-radius: 8px;
   object-fit: cover;
   background: #0f172a;
@@ -225,19 +232,19 @@ textarea {
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: 14px;
   background: rgba(15, 23, 42, 0.82);
 }
 
 .sample-preview-dialog-content {
   display: grid;
   gap: 12px;
-  width: min(100%, 680px);
+  width: min(100%, 760px);
 }
 
 .sample-preview-large-image {
   width: 100%;
-  height: min(78vh, 680px);
+  height: min(76vh, 760px);
   border-radius: 8px;
   object-fit: contain;
   background: #020617;
