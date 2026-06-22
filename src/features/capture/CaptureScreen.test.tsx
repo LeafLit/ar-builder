@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import type { CameraService } from "./cameraService";
 import { CaptureScreen } from "./CaptureScreen";
 import type { SampleStore, TrainingSampleRecord } from "./sampleStore";
@@ -46,6 +47,48 @@ describe("CaptureScreen", () => {
     });
 
     expect(onStateNameChange).toHaveBeenCalledWith("state_a", "拳头");
+  });
+
+  it("allows users to temporarily clear a state name while editing", () => {
+    function ControlledCaptureScreen() {
+      const [states, setStates] = useState([
+        { id: "state_a", name: "状态 A", order: 0 },
+        { id: "state_b", name: "状态 B", order: 1 }
+      ]);
+
+      return (
+        <CaptureScreen
+          states={states}
+          onNext={vi.fn()}
+          onStateNameChange={(stateId, name) => {
+            const trimmedName = name.trim();
+
+            if (!trimmedName) {
+              return;
+            }
+
+            setStates((current) =>
+              current.map((state) =>
+                state.id === stateId ? { ...state, name: trimmedName } : state
+              )
+            );
+          }}
+        />
+      );
+    }
+
+    render(<ControlledCaptureScreen />);
+
+    fireEvent.change(screen.getByLabelText("状态 A 名称"), {
+      target: { value: "状" }
+    });
+    const stateNameInput = screen.getByLabelText("状 名称");
+
+    fireEvent.change(stateNameInput, {
+      target: { value: "" }
+    });
+
+    expect(stateNameInput).toHaveValue("");
   });
 
   it("uses custom state names in state buttons and capture status", async () => {

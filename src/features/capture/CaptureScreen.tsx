@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createCameraService, type CameraService } from "./cameraService";
 import { createSampleStore, type SampleStore } from "./sampleStore";
 import {
@@ -31,11 +31,18 @@ export function CaptureScreen(props: {
   const [sampleCounts, setSampleCounts] = useState<Record<string, number>>(() =>
     createDefaultSampleCounts(states)
   );
+  const [stateNameDrafts, setStateNameDrafts] = useState<Record<string, string>>(() =>
+    createStateNameDrafts(states)
+  );
   const [cameraReady, setCameraReady] = useState(false);
   const [status, setStatus] = useState("先开启摄像头，然后为每个状态采集样本。");
 
   const selectedState =
     states.find((state) => state.id === selectedStateId) ?? states[0];
+
+  useEffect(() => {
+    setStateNameDrafts(createStateNameDrafts(states));
+  }, [states]);
 
   async function startCamera() {
     if (!videoRef.current) {
@@ -71,6 +78,14 @@ export function CaptureScreen(props: {
     }
   }
 
+  function updateStateNameDraft(stateId: string, name: string) {
+    setStateNameDrafts((current) => ({
+      ...current,
+      [stateId]: name
+    }));
+    props.onStateNameChange?.(stateId, name);
+  }
+
   return (
     <div className="stack">
       <div className="panel stack">
@@ -94,10 +109,10 @@ export function CaptureScreen(props: {
               <input
                 aria-label={`${state.name} 名称`}
                 onChange={(event) =>
-                  props.onStateNameChange?.(state.id, event.target.value)
+                  updateStateNameDraft(state.id, event.target.value)
                 }
                 type="text"
-                value={state.name}
+                value={stateNameDrafts[state.id] ?? state.name}
               />
             </label>
           ))}
@@ -135,4 +150,8 @@ export function CaptureScreen(props: {
       </button>
     </div>
   );
+}
+
+function createStateNameDrafts(states: CaptureState[]) {
+  return Object.fromEntries(states.map((state) => [state.id, state.name]));
 }
