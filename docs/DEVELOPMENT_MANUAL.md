@@ -82,6 +82,11 @@ type Project = {
   assets: Asset[];
   bindings: StateBinding[];
   recognitionModel?: SerializedRecognitionModel;
+  settings?: ProjectSettings;
+};
+
+type ProjectSettings = {
+  recognitionSensitivity: number;
 };
 
 type SerializedRecognitionModel = {
@@ -113,8 +118,11 @@ type Asset = {
   id: string;
   type: "model3d" | "image2d" | "text" | "audio";
   name: string;
+  content?: string;
   localBlobKey?: string;
   url?: string;
+  modelId?: BuiltInModel3DId;
+  audioId?: BuiltInAudioId;
 };
 
 type StateBinding = {
@@ -133,6 +141,9 @@ type OutputAction = {
   };
   visible?: boolean;
 };
+
+type BuiltInModel3DId = "cube" | "sphere" | "cone" | "tree";
+type BuiltInAudioId = "beep" | "success" | "alert";
 ```
 
 这只是第一版草案。它的重点是给未来扩展留空间，例如用户登录、云同步和玩法系统，
@@ -164,12 +175,19 @@ type ARAdapter = {
 
 ## 7. 开发阶段
 
+当前进度（2026-06-22）：
+
+- 阶段 1 到阶段 4 的核心能力已经完成：PWA 外壳、本地项目、摄像头采集、浏览器端训练、编辑器和多种输出类型。
+- 阶段 5 已完成相机叠加测试、真实相机识别、稳定识别确认、识别灵敏度、屏幕锚点、3D 预览/叠加、音频触发和状态计数。
+- 当前尚未完成 WebXR 空间 AR、状态切换过渡动画、完整样本管理、项目导入/导出和云同步。
+- 最新已验证提交：`a674c63 feat: manage local projects`。
+
 ### 阶段 1：项目外壳
 
 - 创建 React + TypeScript + Vite 应用。
 - 添加 PWA 配置。
 - 搭建手机端优先的导航结构。
-- 添加本地项目创建、保存和再次编辑。
+- 添加本地项目创建、保存、再次编辑、重命名和删除。
 
 ### 阶段 2：摄像头和样本采集
 
@@ -192,7 +210,9 @@ type ARAdapter = {
 
 - 添加“状态 -> 输出”的编辑器。
 - 支持文字、图片、简单 3D 模型和音频输出。
-- 文字和 2D 图片输出先支持屏幕锚点：横向位置、纵向位置和大小。
+- 文字、2D 图片和 3D 模型输出支持屏幕锚点：横向位置、纵向位置和大小。
+- 3D 模型支持旋转角度控制。
+- 视觉输出可以附加音频，也可以配置纯音频输出。
 - 为每个状态保存输出配置。
 
 ### 阶段 5：AR 和实时测试
@@ -200,9 +220,10 @@ type ARAdapter = {
 - 接入 Three.js 渲染。
 - 添加相机叠加模式。
 - 在相机叠加模式中，先把 `Transform.position` 映射到屏幕百分比，把 `Transform.scale` 映射到显示大小。
-- 在支持设备上添加 WebXR 模式。
+- WebXR 模式后续再按设备支持情况添加。
 - 根据识别状态触发输出。
-- 添加状态切换时的过渡动画。
+- 当前已添加稳定识别确认、低置信度隐藏输出、识别灵敏度滑杆和状态触发计数。
+- 后续添加状态切换时的过渡动画。
 
 ### 阶段 6：打磨和验证
 
@@ -218,15 +239,20 @@ type ARAdapter = {
 - App 可以在 iOS 手机浏览器打开。
 - 如果有鸿蒙设备，App 可以在鸿蒙手机浏览器打开。
 - 摄像头权限流程正常。
-- 用户可以创建两个状态。
+- 用户可以创建两个状态，并自定义状态名称。
+- 用户可以在编辑状态名称时正常清空、删除首字或最后一个字。
 - 用户可以为每个状态采集样本。
 - 用户可以训练模型。
 - 用户可以运行实时识别。
 - 用户可以把不同输出绑定到不同状态。
-- 用户可以调整每个文字或图片输出在相机画面中的位置和大小。
-- 用户可以保存当前项目，并从首页继续编辑已保存项目。
+- 用户可以配置文字、图片、3D 模型、纯音频和视觉输出附加音频。
+- 用户可以调整每个视觉输出在相机画面中的位置、大小和 3D 旋转。
+- 用户可以调节识别灵敏度。
+- 用户可以查看和重置状态触发计数。
+- 用户可以保存当前项目，并从首页继续编辑、重命名或删除已保存项目。
 - 保存前训练成功的项目，重新打开后可以继续启动真实相机识别。
 - 识别状态变化时，输出也会变化。
+- 未识别到已训练状态或置信度不足时，不应显示虚拟物体。
 - 用户拒绝摄像头权限时，App 能给出清晰提示。
 - 当前设备不支持 WebXR 时，App 能自动降级。
 
