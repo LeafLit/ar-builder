@@ -324,7 +324,11 @@ function SamplePreview({
           role="dialog"
         >
           <div className="sample-preview-dialog-content">
-            <img alt={`${sampleLabel} 大图`} src={previewUrl} />
+            <img
+              alt={`${sampleLabel} 大图`}
+              className="sample-preview-large-image"
+              src={previewUrl}
+            />
             <button
               className="primary-button"
               onClick={() => setIsLargePreviewOpen(false)}

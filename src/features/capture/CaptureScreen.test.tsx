@@ -196,7 +196,9 @@ describe("CaptureScreen", () => {
     fireEvent.click(thumbnail);
 
     expect(screen.getByRole("dialog", { name: "状态 A 样本 1 大图" })).toBeInTheDocument();
-    expect(screen.getByAltText("状态 A 样本 1 大图")).toBeInTheDocument();
+    expect(screen.getByAltText("状态 A 样本 1 大图")).toHaveClass(
+      "sample-preview-large-image"
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "关闭大图" }));
 
