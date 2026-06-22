@@ -115,6 +115,39 @@ describe("App", () => {
     expect(await screen.findByDisplayValue("保存后还能编辑")).toBeInTheDocument();
   });
 
+  it("renames a saved project from the home project list", async () => {
+    const savedProjects: Project[] = [createSavedProject("project_1", "厨房 AR 原型")];
+    const repository = createMemoryRepository(savedProjects);
+
+    render(<App projectRepository={repository} />);
+
+    expect(await screen.findByText("厨房 AR 原型")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重命名 厨房 AR 原型" }));
+    fireEvent.change(screen.getByLabelText("项目名称"), {
+      target: { value: "展厅 AR 原型" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存名称" }));
+
+    expect(await screen.findByText("展厅 AR 原型")).toBeInTheDocument();
+    expect(savedProjects[0].name).toBe("展厅 AR 原型");
+  });
+
+  it("deletes a saved project from the home project list", async () => {
+    const savedProjects: Project[] = [createSavedProject("project_1", "厨房 AR 原型")];
+    const repository = createMemoryRepository(savedProjects);
+
+    render(<App projectRepository={repository} />);
+
+    expect(await screen.findByText("厨房 AR 原型")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "删除 厨房 AR 原型" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认删除 厨房 AR 原型" }));
+
+    await waitFor(() => {
+      expect(savedProjects).toHaveLength(0);
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("项目已删除。");
+  });
+
   it("saves and reopens project recognition sensitivity", async () => {
     const savedProjects: Project[] = [];
     const repository: ProjectRepository = {
@@ -161,3 +194,39 @@ describe("App", () => {
     expect(screen.getByText("识别灵敏度：100%")).toBeInTheDocument();
   });
 });
+
+function createSavedProject(id: string, name: string): Project {
+  return {
+    id,
+    name,
+    createdAt: "2026-06-22T00:00:00.000Z",
+    updatedAt: "2026-06-22T00:00:00.000Z",
+    states: [],
+    assets: [],
+    bindings: []
+  };
+}
+
+function createMemoryRepository(savedProjects: Project[]): ProjectRepository {
+  return {
+    list: vi.fn(async () => savedProjects),
+    get: vi.fn(async (id) => savedProjects.find((project) => project.id === id)),
+    save: vi.fn(async (project) => {
+      const index = savedProjects.findIndex((item) => item.id === project.id);
+
+      if (index >= 0) {
+        savedProjects[index] = project;
+        return;
+      }
+
+      savedProjects.push(project);
+    }),
+    delete: vi.fn(async (id) => {
+      const index = savedProjects.findIndex((project) => project.id === id);
+
+      if (index >= 0) {
+        savedProjects.splice(index, 1);
+      }
+    })
+  };
+}

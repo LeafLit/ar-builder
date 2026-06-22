@@ -356,6 +356,33 @@ textarea {
   width: 100%;
 }
 
+.project-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.project-edit-form {
+  display: grid;
+  gap: 8px;
+}
+
+.project-edit-form input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.project-edit-form input:focus {
+  border-color: #0f766e;
+  outline: 2px solid #99f6e4;
+  outline-offset: 1px;
+}
+
 .anchor-controls {
   display: grid;
   gap: 10px;

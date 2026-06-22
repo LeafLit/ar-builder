@@ -39,6 +39,24 @@ export function App({ projectRepository = createProjectRepository() }: { project
     }
   }
 
+  async function renameProject(projectId: string, name: string) {
+    const project = await projectRepository.get(projectId);
+
+    if (!project) {
+      return;
+    }
+
+    await projectRepository.save({
+      ...project,
+      name,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  async function deleteProject(projectId: string) {
+    await projectRepository.delete(projectId);
+  }
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -59,7 +77,9 @@ export function App({ projectRepository = createProjectRepository() }: { project
               listProjects={async () =>
                 (await projectRepository.list()).map((project) => createProjectSummary(project))
               }
+              onDeleteProject={deleteProject}
               onOpenProject={openProject}
+              onRenameProject={renameProject}
               onSaveProject={saveCurrentProject}
             />
             <button
