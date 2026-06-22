@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createCameraService, type CameraService } from "./cameraService";
-import { createSampleStore, type SampleStore } from "./sampleStore";
+import {
+  createSampleStore,
+  type SampleStore,
+  type TrainingSampleRecord
+} from "./sampleStore";
 import {
   createDefaultSampleCounts,
   DEFAULT_PROJECT_STATES
@@ -23,14 +27,23 @@ export function CaptureScreen(props: {
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const cameraService = props.cameraService ?? createCameraService();
-  const sampleStore = props.sampleStore ?? createSampleStore();
+  const cameraService = useMemo(
+    () => props.cameraService ?? createCameraService(),
+    [props.cameraService]
+  );
+  const sampleStore = useMemo(
+    () => props.sampleStore ?? createSampleStore(),
+    [props.sampleStore]
+  );
   const projectId = props.projectId ?? "local_project";
   const states = props.states ?? DEFAULT_PROJECT_STATES;
   const [selectedStateId, setSelectedStateId] = useState(states[0]?.id ?? "state_a");
   const [sampleCounts, setSampleCounts] = useState<Record<string, number>>(() =>
     createDefaultSampleCounts(states)
   );
+  const [samplesByState, setSamplesByState] = useState<
+    Record<string, TrainingSampleRecord[]>
+  >({});
   const [stateNameDrafts, setStateNameDrafts] = useState<Record<string, string>>(() =>
     createStateNameDrafts(states)
   );
@@ -43,6 +56,46 @@ export function CaptureScreen(props: {
   useEffect(() => {
     setStateNameDrafts(createStateNameDrafts(states));
   }, [states]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSamples() {
+      const sampleEntries = await Promise.all(
+        states.map(async (state) => {
+          const samples = (await sampleStore.listByState(state.id)).filter(
+            (sample) => sample.projectId === projectId
+          );
+
+          return [state.id, samples] as const;
+        })
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const nextSamplesByState = Object.fromEntries(sampleEntries);
+      const nextSampleCounts = Object.fromEntries(
+        sampleEntries.map(([stateId, samples]) => [stateId, samples.length])
+      );
+
+      setSamplesByState(nextSamplesByState);
+      setSampleCounts((current) => ({
+        ...current,
+        ...nextSampleCounts
+      }));
+      sampleEntries.forEach(([stateId, samples]) => {
+        props.onSampleCaptured?.(stateId, samples.length);
+      });
+    }
+
+    void loadSamples();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, sampleStore, states]);
 
   async function startCamera() {
     if (!videoRef.current) {
@@ -65,17 +118,53 @@ export function CaptureScreen(props: {
 
     try {
       const blob = await cameraService.captureFrame(videoRef.current);
-      await sampleStore.saveSample(projectId, selectedState.id, blob);
-      const nextCount = (sampleCounts[selectedState.id] ?? 0) + 1;
-      setSampleCounts((current) => ({
+      const savedSample = await sampleStore.saveSample(projectId, selectedState.id, blob);
+      const nextSamples = [
+        ...(samplesByState[selectedState.id] ?? []),
+        savedSample
+      ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const nextCount = nextSamples.length;
+      setSamplesByState((current) => ({
         ...current,
-        [selectedState.id]: nextCount
+        [selectedState.id]: nextSamples
       }));
+      updateSampleCount(selectedState.id, nextCount);
       props.onSampleCaptured?.(selectedState.id, nextCount);
       setStatus(`已为 ${selectedState.name} 采集 ${nextCount} 个样本。`);
     } catch {
       setStatus("采集样本失败，请重新尝试。");
     }
+  }
+
+  async function deleteSample(sample: TrainingSampleRecord) {
+    if (!selectedState) {
+      return;
+    }
+
+    try {
+      await sampleStore.deleteSample(sample.id);
+      const nextSamples = (samplesByState[sample.stateId] ?? []).filter(
+        (item) => item.id !== sample.id
+      );
+      const nextCount = nextSamples.length;
+
+      setSamplesByState((current) => ({
+        ...current,
+        [sample.stateId]: nextSamples
+      }));
+      updateSampleCount(sample.stateId, nextCount);
+      props.onSampleCaptured?.(sample.stateId, nextCount);
+      setStatus(`已删除 ${selectedState.name} 的 1 个坏样本。`);
+    } catch {
+      setStatus("删除样本失败，请重新尝试。");
+    }
+  }
+
+  function updateSampleCount(stateId: string, count: number) {
+    setSampleCounts((current) => ({
+      ...current,
+      [stateId]: count
+    }));
   }
 
   function updateStateNameDraft(stateId: string, name: string) {
@@ -145,6 +234,28 @@ export function CaptureScreen(props: {
         </button>
       </div>
 
+      <div className="panel stack">
+        <h2>样本管理</h2>
+        <p className="muted">
+          当前查看：{selectedState?.name ?? "未选择状态"}。拍坏的样本可以删除，再重新采集。
+        </p>
+        {(samplesByState[selectedState?.id ?? ""] ?? []).length > 0 ? (
+          <div className="sample-list">
+            {(samplesByState[selectedState?.id ?? ""] ?? []).map((sample, index) => (
+              <SamplePreview
+                index={index}
+                key={sample.id}
+                onDelete={() => deleteSample(sample)}
+                sample={sample}
+                stateName={selectedState?.name ?? "状态"}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="empty-note">这个状态还没有样本。开启摄像头后点击“采集样本”。</p>
+        )}
+      </div>
+
       <button className="primary-button" onClick={props.onNext} type="button">
         下一步：训练
       </button>
@@ -154,4 +265,61 @@ export function CaptureScreen(props: {
 
 function createStateNameDrafts(states: CaptureState[]) {
   return Object.fromEntries(states.map((state) => [state.id, state.name]));
+}
+
+function SamplePreview({
+  index,
+  onDelete,
+  sample,
+  stateName
+}: {
+  index: number;
+  onDelete: () => void;
+  sample: TrainingSampleRecord;
+  stateName: string;
+}) {
+  const [previewUrl, setPreviewUrl] = useState("");
+  const sampleNumber = index + 1;
+
+  useEffect(() => {
+    const url = URL.createObjectURL(sample.blob);
+
+    setPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [sample.blob]);
+
+  return (
+    <div className="sample-card">
+      {previewUrl && (
+        <img alt={`${stateName} 样本 ${sampleNumber}`} src={previewUrl} />
+      )}
+      <div className="sample-card-body">
+        <strong>{stateName} 样本 {sampleNumber}</strong>
+        <span>{formatSampleTime(sample.createdAt)}</span>
+        <button
+          className="secondary-button"
+          onClick={onDelete}
+          type="button"
+        >
+          删除 {stateName} 样本 {sampleNumber}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function formatSampleTime(createdAt: string) {
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return createdAt;
+  }
+
+  const datePart = date.toISOString().slice(0, 10);
+  const timePart = date.toISOString().slice(11, 16);
+
+  return `${datePart} ${timePart}`;
 }

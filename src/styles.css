@@ -161,6 +161,49 @@ textarea {
   outline-offset: 1px;
 }
 
+.sample-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sample-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.sample-card img {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+.sample-card-body {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sample-card-body span {
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.empty-note {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 12px;
+  color: #64748b;
+  background: #f8fafc;
+}
+
 .training-hint {
   border: 1px solid #bae6fd;
   border-radius: 8px;

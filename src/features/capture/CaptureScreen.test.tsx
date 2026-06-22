@@ -27,6 +27,17 @@ function createFakeSampleStore(): SampleStore {
   };
 }
 
+beforeEach(() => {
+  vi.stubGlobal("URL", {
+    createObjectURL: vi.fn(() => "blob:sample-preview"),
+    revokeObjectURL: vi.fn()
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("CaptureScreen", () => {
   it("lets users rename input states from the capture step", () => {
     const onStateNameChange = vi.fn();
@@ -119,6 +130,81 @@ describe("CaptureScreen", () => {
       expect(screen.getByText("已为 拳头 采集 1 个样本。")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: "拳头 1 个样本" })).toBeInTheDocument();
+  });
+
+  it("loads saved samples for the selected state so users can review them", async () => {
+    const sampleStore = createFakeSampleStore();
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a"
+        ? [
+            {
+              id: "sample_1",
+              projectId: "project_1",
+              stateId: "state_a",
+              createdAt: "2026-06-10T00:00:00.000Z",
+              blob: new Blob(["sample"], { type: "image/jpeg" })
+            }
+          ]
+        : []
+    );
+
+    render(
+      <CaptureScreen
+        sampleStore={sampleStore}
+        projectId="project_1"
+        onNext={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 1 个样本" })).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByAltText("状态 A 样本 1")).toBeInTheDocument();
+    });
+    expect(screen.getByText("2026-06-10 00:00")).toBeInTheDocument();
+  });
+
+  it("deletes a bad sample and updates the selected state count", async () => {
+    const sampleStore = createFakeSampleStore();
+    const onSampleCaptured = vi.fn();
+    let stateASamples: TrainingSampleRecord[] = [
+      {
+        id: "sample_1",
+        projectId: "project_1",
+        stateId: "state_a",
+        createdAt: "2026-06-10T00:00:00.000Z",
+        blob: new Blob(["sample"], { type: "image/jpeg" })
+      }
+    ];
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a" ? stateASamples : []
+    );
+    vi.mocked(sampleStore.deleteSample).mockImplementation(async (sampleId) => {
+      stateASamples = stateASamples.filter((sample) => sample.id !== sampleId);
+    });
+
+    render(
+      <CaptureScreen
+        sampleStore={sampleStore}
+        projectId="project_1"
+        onNext={vi.fn()}
+        onSampleCaptured={onSampleCaptured}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 1 个样本" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "删除 状态 A 样本 1" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 0 个样本" })).toBeInTheDocument();
+    });
+    expect(sampleStore.deleteSample).toHaveBeenCalledWith("sample_1");
+    expect(onSampleCaptured).toHaveBeenCalledWith("state_a", 0);
+    expect(screen.getByText("已删除 状态 A 的 1 个坏样本。")).toBeInTheDocument();
   });
 
   it("starts the camera and captures a sample for the selected state", async () => {
