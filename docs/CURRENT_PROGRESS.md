@@ -9,8 +9,8 @@
 - 本地路径：`C:\Users\Administrator\Desktop\AR Builder`
 - GitHub 仓库：`https://github.com/LeafLit/ar-builder`
 - 线上测试地址：`https://leaflit.github.io/ar-builder/`
-- 当前最新提交：`766e9a9 feat: manage captured samples`
-- 防缓存测试地址：`https://leaflit.github.io/ar-builder/?v=766e9a9`
+- 最新功能提交：`766e9a9 feat: manage captured samples`
+- 防缓存测试地址模板：`https://leaflit.github.io/ar-builder/?v=最新提交短哈希`
 - 每次部署后建议把防缓存参数换成最新提交短哈希，例如：`https://leaflit.github.io/ar-builder/?v=最新提交短哈希`
 
 ## 2. 技术方向
