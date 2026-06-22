@@ -176,6 +176,21 @@ textarea {
   background: #f8fafc;
 }
 
+.sample-thumbnail-button {
+  width: 96px;
+  height: 96px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.sample-thumbnail-button:focus {
+  outline: 3px solid #99f6e4;
+  outline-offset: 2px;
+}
+
 .sample-card img {
   width: 96px;
   height: 96px;
@@ -202,6 +217,30 @@ textarea {
   padding: 12px;
   color: #64748b;
   background: #f8fafc;
+}
+
+.sample-preview-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.sample-preview-dialog-content {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 680px);
+}
+
+.sample-preview-dialog-content img {
+  width: 100%;
+  max-height: 78vh;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #020617;
 }
 
 .training-hint {

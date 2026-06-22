@@ -165,6 +165,44 @@ describe("CaptureScreen", () => {
     expect(screen.getByText("2026-06-10 00:00")).toBeInTheDocument();
   });
 
+  it("opens a large preview when users tap a sample thumbnail", async () => {
+    const sampleStore = createFakeSampleStore();
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a"
+        ? [
+            {
+              id: "sample_1",
+              projectId: "project_1",
+              stateId: "state_a",
+              createdAt: "2026-06-10T00:00:00.000Z",
+              blob: new Blob(["sample"], { type: "image/jpeg" })
+            }
+          ]
+        : []
+    );
+
+    render(
+      <CaptureScreen
+        sampleStore={sampleStore}
+        projectId="project_1"
+        onNext={vi.fn()}
+      />
+    );
+
+    const thumbnail = await screen.findByRole("button", {
+      name: "放大查看 状态 A 样本 1"
+    });
+
+    fireEvent.click(thumbnail);
+
+    expect(screen.getByRole("dialog", { name: "状态 A 样本 1 大图" })).toBeInTheDocument();
+    expect(screen.getByAltText("状态 A 样本 1 大图")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭大图" }));
+
+    expect(screen.queryByRole("dialog", { name: "状态 A 样本 1 大图" })).not.toBeInTheDocument();
+  });
+
   it("deletes a bad sample and updates the selected state count", async () => {
     const sampleStore = createFakeSampleStore();
     const onSampleCaptured = vi.fn();

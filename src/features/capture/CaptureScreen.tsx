@@ -279,7 +279,9 @@ function SamplePreview({
   stateName: string;
 }) {
   const [previewUrl, setPreviewUrl] = useState("");
+  const [isLargePreviewOpen, setIsLargePreviewOpen] = useState(false);
   const sampleNumber = index + 1;
+  const sampleLabel = `${stateName} 样本 ${sampleNumber}`;
 
   useEffect(() => {
     const url = URL.createObjectURL(sample.blob);
@@ -294,10 +296,17 @@ function SamplePreview({
   return (
     <div className="sample-card">
       {previewUrl && (
-        <img alt={`${stateName} 样本 ${sampleNumber}`} src={previewUrl} />
+        <button
+          aria-label={`放大查看 ${sampleLabel}`}
+          className="sample-thumbnail-button"
+          onClick={() => setIsLargePreviewOpen(true)}
+          type="button"
+        >
+          <img alt={sampleLabel} src={previewUrl} />
+        </button>
       )}
       <div className="sample-card-body">
-        <strong>{stateName} 样本 {sampleNumber}</strong>
+        <strong>{sampleLabel}</strong>
         <span>{formatSampleTime(sample.createdAt)}</span>
         <button
           className="secondary-button"
@@ -307,6 +316,25 @@ function SamplePreview({
           删除 {stateName} 样本 {sampleNumber}
         </button>
       </div>
+      {isLargePreviewOpen && previewUrl && (
+        <div
+          aria-label={`${sampleLabel} 大图`}
+          aria-modal="true"
+          className="sample-preview-dialog"
+          role="dialog"
+        >
+          <div className="sample-preview-dialog-content">
+            <img alt={`${sampleLabel} 大图`} src={previewUrl} />
+            <button
+              className="primary-button"
+              onClick={() => setIsLargePreviewOpen(false)}
+              type="button"
+            >
+              关闭大图
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
