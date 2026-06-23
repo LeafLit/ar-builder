@@ -56,6 +56,56 @@ describe("ProjectLibraryPanel", () => {
     expect(listProjects).toHaveBeenCalledTimes(2);
   });
 
+  it("exports a saved project from the project list", async () => {
+    const onExportProject = vi.fn(async () => undefined);
+
+    render(
+      <ProjectLibraryPanel
+        listProjects={async () => [savedProject]}
+        onExportProject={onExportProject}
+        onOpenProject={vi.fn()}
+        onSaveProject={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText("厨房 AR 原型")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "导出 厨房 AR 原型" }));
+
+    expect(onExportProject).toHaveBeenCalledWith("project_1");
+    expect(await screen.findByRole("status")).toHaveTextContent("项目文件已导出。");
+  });
+
+  it("imports a project file and refreshes the project list", async () => {
+    const onImportProject = vi.fn(async () => undefined);
+    const listProjects = vi
+      .fn<() => Promise<ProjectSummary[]>>()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([savedProject]);
+
+    render(
+      <ProjectLibraryPanel
+        listProjects={listProjects}
+        onImportProject={onImportProject}
+        onOpenProject={vi.fn()}
+        onSaveProject={vi.fn()}
+      />
+    );
+
+    const file = new File(["{}"], "demo-ar-builder.json", {
+      type: "application/json"
+    });
+
+    fireEvent.change(screen.getByLabelText("导入项目文件"), {
+      target: { files: [file] }
+    });
+
+    await waitFor(() => {
+      expect(onImportProject).toHaveBeenCalledWith(file);
+    });
+    expect(await screen.findByText("厨房 AR 原型")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("项目文件已导入。");
+  });
+
   it("renames a saved project and refreshes the list", async () => {
     const onRenameProject = vi.fn(async () => undefined);
     const listProjects = vi

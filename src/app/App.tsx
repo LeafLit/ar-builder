@@ -4,6 +4,10 @@ import { appReducer, initialAppState } from "./appState";
 import { createAppTrainer } from "./appTrainer";
 import { AuthoringScreen } from "../features/authoring/AuthoringScreen";
 import { CaptureScreen } from "../features/capture/CaptureScreen";
+import {
+  createSampleStore,
+  type SampleStore
+} from "../features/capture/sampleStore";
 import { DeviceReadinessPanel } from "../features/device/DeviceReadinessPanel";
 import { RealDeviceFeedbackPanel } from "../features/feedback/RealDeviceFeedbackPanel";
 import { TrainScreen, type ModelTrainer } from "../features/ml/TrainScreen";
@@ -12,9 +16,23 @@ import {
   createProjectRepository,
   type ProjectRepository
 } from "../features/projects/projectRepository";
+import {
+  createProjectExportBundle,
+  parseProjectExportBundle
+} from "../features/projects/projectTransfer";
 import { TestScreen } from "../features/testing/TestScreen";
 
-export function App({ projectRepository = createProjectRepository() }: { projectRepository?: ProjectRepository }) {
+type AppProps = {
+  projectRepository?: ProjectRepository;
+  sampleStore?: SampleStore;
+  downloadFile?: (filename: string, text: string) => void;
+};
+
+export function App({
+  downloadFile = downloadTextFile,
+  projectRepository = createProjectRepository(),
+  sampleStore = createSampleStore()
+}: AppProps) {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
   const hasEditableProject = state.assets.length > 0 || state.bindings.length > 0;
   const trainer = useMemo<ModelTrainer | undefined>(
@@ -57,6 +75,31 @@ export function App({ projectRepository = createProjectRepository() }: { project
     await projectRepository.delete(projectId);
   }
 
+  async function exportProject(projectId: string) {
+    const project = await projectRepository.get(projectId);
+
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    const samples = await sampleStore.listByProject(project.id);
+    const bundle = await createProjectExportBundle(project, samples);
+
+    downloadFile(
+      `${createProjectExportFilename(project.name)}.json`,
+      JSON.stringify(bundle, null, 2)
+    );
+  }
+
+  async function importProject(file: File) {
+    const imported = await parseProjectExportBundle(await file.text());
+
+    await projectRepository.save(imported.project);
+    await Promise.all(
+      imported.samples.map((sample) => sampleStore.saveSampleRecord(sample))
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -78,6 +121,8 @@ export function App({ projectRepository = createProjectRepository() }: { project
                 (await projectRepository.list()).map((project) => createProjectSummary(project))
               }
               onDeleteProject={deleteProject}
+              onExportProject={exportProject}
+              onImportProject={importProject}
               onOpenProject={openProject}
               onRenameProject={renameProject}
               onSaveProject={saveCurrentProject}
@@ -94,6 +139,7 @@ export function App({ projectRepository = createProjectRepository() }: { project
         {state.screen === "capture" && (
           <CaptureScreen
             projectId={state.projectId}
+            sampleStore={sampleStore}
             states={state.states}
             onStateNameChange={(stateId, name) =>
               dispatch({ type: "renameState", stateId, name })
@@ -166,4 +212,19 @@ export function App({ projectRepository = createProjectRepository() }: { project
       </section>
     </main>
   );
+}
+
+function createProjectExportFilename(projectName: string) {
+  return `${projectName.trim() || "ar-builder-project"}-ar-builder`;
+}
+
+function downloadTextFile(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

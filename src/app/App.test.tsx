@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { App } from "./App";
+import type { SampleStore, TrainingSampleRecord } from "../features/capture/sampleStore";
 import type { ProjectRepository } from "../features/projects/projectRepository";
 import type { Project } from "../features/projects/projectTypes";
 
@@ -148,6 +149,93 @@ describe("App", () => {
     expect(screen.getByRole("status")).toHaveTextContent("项目已删除。");
   });
 
+  it("exports a saved project with its camera samples", async () => {
+    const savedProjects: Project[] = [createSavedProject("project_1", "厨房 AR 原型")];
+    const repository = createMemoryRepository(savedProjects);
+    const sampleStore = createMemorySampleStore([
+      {
+        id: "sample_1",
+        projectId: "project_1",
+        stateId: "state_a",
+        createdAt: "2026-06-22T10:00:00.000Z",
+        blob: new Blob(["sample-data"], { type: "image/jpeg" })
+      }
+    ]);
+    const downloadFile = vi.fn();
+
+    render(
+      <App
+        downloadFile={downloadFile}
+        projectRepository={repository}
+        sampleStore={sampleStore}
+      />
+    );
+
+    expect(await screen.findByText("厨房 AR 原型")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "导出 厨房 AR 原型" }));
+
+    await waitFor(() => {
+      expect(downloadFile).toHaveBeenCalledTimes(1);
+    });
+    expect(downloadFile).toHaveBeenCalledWith(
+      "厨房 AR 原型-ar-builder.json",
+      expect.stringContaining("\"samples\"")
+    );
+    expect(downloadFile.mock.calls[0][1]).toContain("data:image/jpeg;base64");
+  });
+
+  it("imports a project file as a new saved copy with samples", async () => {
+    const savedProjects: Project[] = [];
+    const repository = createMemoryRepository(savedProjects);
+    const savedSamples: TrainingSampleRecord[] = [];
+    const sampleStore = createMemorySampleStore(savedSamples);
+    const file = new File(
+      [
+        JSON.stringify({
+          version: 1,
+          exportedAt: "2026-06-23T08:00:00.000Z",
+          project: {
+            ...createSavedProject("project_original", "导入测试"),
+            states: [
+              {
+                id: "state_a",
+                name: "状态 A",
+                order: 0,
+                sampleIds: ["sample_original"]
+              }
+            ]
+          },
+          samples: [
+            {
+              id: "sample_original",
+              projectId: "project_original",
+              stateId: "state_a",
+              createdAt: "2026-06-22T10:00:00.000Z",
+              type: "image/jpeg",
+              dataUrl: "data:image/jpeg;base64,aW1wb3J0ZWQ="
+            }
+          ]
+        })
+      ],
+      "project.json",
+      { type: "application/json" }
+    );
+
+    render(<App projectRepository={repository} sampleStore={sampleStore} />);
+
+    fireEvent.change(screen.getByLabelText("导入项目文件"), {
+      target: { files: [file] }
+    });
+
+    await waitFor(() => {
+      expect(savedProjects).toHaveLength(1);
+      expect(savedSamples).toHaveLength(1);
+    });
+    expect(savedProjects[0].name).toBe("导入测试（导入副本）");
+    expect(savedProjects[0].states[0].sampleIds).toHaveLength(1);
+    await expect(savedSamples[0].blob.text()).resolves.toBe("imported");
+  });
+
   it("saves and reopens project recognition sensitivity", async () => {
     const savedProjects: Project[] = [];
     const repository: ProjectRepository = {
@@ -227,6 +315,43 @@ function createMemoryRepository(savedProjects: Project[]): ProjectRepository {
       if (index >= 0) {
         savedProjects.splice(index, 1);
       }
+    })
+  };
+}
+
+function createMemorySampleStore(samples: TrainingSampleRecord[]): SampleStore {
+  return {
+    saveSample: vi.fn(async (projectId, stateId, blob) => {
+      const sample: TrainingSampleRecord = {
+        id: `sample_${samples.length + 1}`,
+        projectId,
+        stateId,
+        createdAt: "2026-06-23T00:00:00.000Z",
+        blob
+      };
+
+      samples.push(sample);
+      return sample;
+    }),
+    listByState: vi.fn(async (stateId) =>
+      samples.filter((sample) => sample.stateId === stateId)
+    ),
+    listByProject: vi.fn(async (projectId) =>
+      samples.filter((sample) => sample.projectId === projectId)
+    ),
+    getSampleBlob: vi.fn(async (sampleId) =>
+      samples.find((sample) => sample.id === sampleId)?.blob
+    ),
+    deleteSample: vi.fn(async (sampleId) => {
+      const index = samples.findIndex((sample) => sample.id === sampleId);
+
+      if (index >= 0) {
+        samples.splice(index, 1);
+      }
+    }),
+    saveSampleRecord: vi.fn(async (sample) => {
+      samples.push(sample);
+      return sample;
     })
   };
 }

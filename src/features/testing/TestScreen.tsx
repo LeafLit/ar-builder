@@ -55,6 +55,7 @@ export function TestScreen(props: {
   recognizer?: StateRecognizer;
   createCameraRecognizer?: CameraRecognizerFactory;
   playAudio?: (audioId: BuiltInAudioId) => Promise<void> | void;
+  vibrate?: (duration: number) => void;
   recognitionSensitivity?: number;
   onRecognitionSensitivityChange?: (recognitionSensitivity: number) => void;
   onBackHome: () => void;
@@ -63,6 +64,7 @@ export function TestScreen(props: {
   const sessionRef = useRef<RecognitionSession | undefined>(undefined);
   const lastAudioStateIdRef = useRef<string | undefined>(undefined);
   const playAudioRef = useRef(props.playAudio ?? playBuiltInAudio);
+  const vibrateRef = useRef(props.vibrate ?? vibrateDevice);
   const states = props.states ?? DEFAULT_PROJECT_STATES;
   const [detectedState, setDetectedState] = useState<TestState | undefined>();
   const [confidence, setConfidence] = useState<number | undefined>();
@@ -103,6 +105,7 @@ export function TestScreen(props: {
   });
 
   playAudioRef.current = props.playAudio ?? playBuiltInAudio;
+  vibrateRef.current = props.vibrate ?? vibrateDevice;
 
   useEffect(() => {
     return () => {
@@ -114,6 +117,12 @@ export function TestScreen(props: {
     setTriggerCounter((current) =>
       updateStateTriggerCounter(current, confirmedDetectedState?.id)
     );
+  }, [confirmedDetectedState?.id]);
+
+  useEffect(() => {
+    if (confirmedDetectedState?.id) {
+      vibrateRef.current(35);
+    }
   }, [confirmedDetectedState?.id]);
 
   useEffect(() => {
@@ -242,7 +251,7 @@ export function TestScreen(props: {
         <div className="ar-test-camera">相机画面预览</div>
         {output && (
           <div
-            className={`ar-test-overlay ${createOutputClassName(output.asset)}`}
+            className={`ar-test-overlay ar-test-overlay-enter ${createOutputClassName(output.asset)}`}
             aria-live="polite"
             style={anchorStyle}
           >
@@ -553,4 +562,10 @@ function createOutputClassName(asset: Asset | undefined) {
   }
 
   return "";
+}
+
+function vibrateDevice(duration: number) {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(duration);
+  }
 }

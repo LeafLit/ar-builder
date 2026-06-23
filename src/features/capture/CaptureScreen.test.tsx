@@ -22,8 +22,10 @@ function createFakeSampleStore(): SampleStore {
       blob
     })),
     listByState: vi.fn(async () => [] as TrainingSampleRecord[]),
+    listByProject: vi.fn(async () => [] as TrainingSampleRecord[]),
     getSampleBlob: vi.fn(async () => undefined),
-    deleteSample: vi.fn(async () => undefined)
+    deleteSample: vi.fn(async () => undefined),
+    saveSampleRecord: vi.fn(async (sample) => sample)
   };
 }
 
@@ -304,6 +306,96 @@ describe("CaptureScreen", () => {
     expect(sampleStore.deleteSample).toHaveBeenCalledWith("sample_1");
     expect(onSampleCaptured).toHaveBeenCalledWith("state_a", 0);
     expect(screen.getByText("已删除 状态 A 的 1 个坏样本。")).toBeInTheDocument();
+  });
+
+  it("restores a deleted sample when the user taps undo", async () => {
+    const sampleStore = createFakeSampleStore();
+    const onSampleCaptured = vi.fn();
+    let stateASamples: TrainingSampleRecord[] = [
+      {
+        id: "sample_1",
+        projectId: "project_1",
+        stateId: "state_a",
+        createdAt: "2026-06-10T00:00:00.000Z",
+        blob: new Blob(["sample"], { type: "image/jpeg" })
+      }
+    ];
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a" ? stateASamples : []
+    );
+    vi.mocked(sampleStore.deleteSample).mockImplementation(async (sampleId) => {
+      stateASamples = stateASamples.filter((sample) => sample.id !== sampleId);
+    });
+    vi.mocked(sampleStore.saveSampleRecord).mockImplementation(async (sample) => {
+      stateASamples = [...stateASamples, sample];
+      return sample;
+    });
+
+    render(
+      <CaptureScreen
+        sampleStore={sampleStore}
+        projectId="project_1"
+        onNext={vi.fn()}
+        onSampleCaptured={onSampleCaptured}
+      />
+    );
+
+    await screen.findByRole("button", { name: "状态 A 1 个样本" });
+    fireEvent.click(screen.getByRole("button", { name: "删除 状态 A 样本 1" }));
+    fireEvent.click(await screen.findByRole("button", { name: "撤销删除" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 1 个样本" })).toBeInTheDocument();
+    });
+    expect(sampleStore.saveSampleRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "sample_1", projectId: "project_1" })
+    );
+    expect(onSampleCaptured).toHaveBeenLastCalledWith("state_a", 1);
+  });
+
+  it("deletes selected samples in a batch and can undo the batch", async () => {
+    const sampleStore = createFakeSampleStore();
+    let stateASamples: TrainingSampleRecord[] = Array.from({ length: 3 }, (_, index) => ({
+      id: `sample_${index + 1}`,
+      projectId: "project_1",
+      stateId: "state_a",
+      createdAt: `2026-06-10T00:0${index}:00.000Z`,
+      blob: new Blob([`sample-${index + 1}`], { type: "image/jpeg" })
+    }));
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a" ? stateASamples : []
+    );
+    vi.mocked(sampleStore.deleteSample).mockImplementation(async (sampleId) => {
+      stateASamples = stateASamples.filter((sample) => sample.id !== sampleId);
+    });
+    vi.mocked(sampleStore.saveSampleRecord).mockImplementation(async (sample) => {
+      stateASamples = [...stateASamples, sample].sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt)
+      );
+      return sample;
+    });
+
+    render(
+      <CaptureScreen sampleStore={sampleStore} projectId="project_1" onNext={vi.fn()} />
+    );
+
+    await screen.findByRole("button", { name: "状态 A 3 个样本" });
+    fireEvent.click(screen.getByRole("button", { name: "批量选择" }));
+    fireEvent.click(screen.getByLabelText("选择 状态 A 样本 1"));
+    fireEvent.click(screen.getByLabelText("选择 状态 A 样本 2"));
+    fireEvent.click(screen.getByRole("button", { name: "删除选中的 2 个样本" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 1 个样本" })).toBeInTheDocument();
+    });
+    expect(sampleStore.deleteSample).toHaveBeenCalledWith("sample_1");
+    expect(sampleStore.deleteSample).toHaveBeenCalledWith("sample_2");
+
+    fireEvent.click(screen.getByRole("button", { name: "撤销删除" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 3 个样本" })).toBeInTheDocument();
+    });
   });
 
   it("starts the camera and captures a sample for the selected state", async () => {

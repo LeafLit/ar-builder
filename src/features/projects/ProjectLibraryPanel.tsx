@@ -4,12 +4,16 @@ import type { ProjectSummary } from "./projectTypes";
 export function ProjectLibraryPanel({
   listProjects,
   onDeleteProject,
+  onExportProject,
+  onImportProject,
   onOpenProject,
   onRenameProject,
   onSaveProject
 }: {
   listProjects: () => Promise<ProjectSummary[]>;
   onDeleteProject?: (projectId: string) => void | Promise<void>;
+  onExportProject?: (projectId: string) => void | Promise<void>;
+  onImportProject?: (file: File) => void | Promise<void>;
   onOpenProject: (projectId: string) => void | Promise<void>;
   onRenameProject?: (projectId: string, name: string) => void | Promise<void>;
   onSaveProject: () => void | Promise<void>;
@@ -37,6 +41,29 @@ export function ProjectLibraryPanel({
       setStatus("当前项目已保存。");
     } catch {
       setStatus("保存项目失败，请稍后再试。");
+    }
+  }
+
+  async function exportProject(projectId: string) {
+    try {
+      await onExportProject?.(projectId);
+      setStatus("项目文件已导出。");
+    } catch {
+      setStatus("导出项目失败，请稍后再试。");
+    }
+  }
+
+  async function importProject(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    try {
+      await onImportProject?.(file);
+      await refreshProjects();
+      setStatus("项目文件已导入。");
+    } catch {
+      setStatus("导入项目失败，请确认文件是否来自 AR Builder。");
     }
   }
 
@@ -95,6 +122,18 @@ export function ProjectLibraryPanel({
         保存当前项目
       </button>
 
+      {onImportProject && (
+        <label className="file-import-control">
+          <span>导入项目文件</span>
+          <input
+            accept="application/json,.json"
+            aria-label="导入项目文件"
+            onChange={(event) => void importProject(event.currentTarget.files?.[0])}
+            type="file"
+          />
+        </label>
+      )}
+
       {projects.length > 0 && (
         <div className="project-list">
           {projects.map((project) => (
@@ -141,6 +180,15 @@ export function ProjectLibraryPanel({
               >
                 继续编辑 {project.name}
               </button>
+              {onExportProject && (
+                <button
+                  className="secondary-button"
+                  onClick={() => void exportProject(project.id)}
+                  type="button"
+                >
+                  导出 {project.name}
+                </button>
+              )}
               {onRenameProject && (
                 <button
                   className="secondary-button"

@@ -51,6 +51,9 @@ export function CaptureScreen(props: {
     label: string;
     url: string;
   } | null>(null);
+  const [deletedSamples, setDeletedSamples] = useState<TrainingSampleRecord[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedSampleIds, setSelectedSampleIds] = useState<string[]>([]);
   const [cameraReady, setCameraReady] = useState(false);
   const [status, setStatus] = useState("先开启摄像头，然后为每个状态采集样本。");
 
@@ -61,6 +64,11 @@ export function CaptureScreen(props: {
   useEffect(() => {
     setStateNameDrafts(createStateNameDrafts(states));
   }, [states]);
+
+  useEffect(() => {
+    setSelectionMode(false);
+    setSelectedSampleIds([]);
+  }, [selectedStateId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +143,7 @@ export function CaptureScreen(props: {
       }));
       updateSampleCount(selectedState.id, nextCount);
       props.onSampleCaptured?.(selectedState.id, nextCount);
+      setDeletedSamples([]);
       setStatus(`已为 ${selectedState.name} 采集 ${nextCount} 个样本。`);
     } catch {
       setStatus("采集样本失败，请重新尝试。");
@@ -142,27 +151,84 @@ export function CaptureScreen(props: {
   }
 
   async function deleteSample(sample: TrainingSampleRecord) {
+    await deleteSamples([sample]);
+  }
+
+  async function deleteSelectedSamples() {
+    const samplesToDelete = selectedSamples.filter((sample) =>
+      selectedSampleIds.includes(sample.id)
+    );
+
+    await deleteSamples(samplesToDelete);
+  }
+
+  async function deleteSamples(samplesToDelete: TrainingSampleRecord[]) {
     if (!selectedState) {
       return;
     }
 
     try {
-      await sampleStore.deleteSample(sample.id);
-      const nextSamples = (samplesByState[sample.stateId] ?? []).filter(
-        (item) => item.id !== sample.id
+      if (samplesToDelete.length === 0) {
+        return;
+      }
+
+      await Promise.all(samplesToDelete.map((sample) => sampleStore.deleteSample(sample.id)));
+      const deletedIds = new Set(samplesToDelete.map((sample) => sample.id));
+      const stateId = samplesToDelete[0].stateId;
+      const nextSamples = (samplesByState[stateId] ?? []).filter(
+        (item) => !deletedIds.has(item.id)
       );
       const nextCount = nextSamples.length;
 
       setSamplesByState((current) => ({
         ...current,
-        [sample.stateId]: nextSamples
+        [stateId]: nextSamples
       }));
-      updateSampleCount(sample.stateId, nextCount);
-      props.onSampleCaptured?.(sample.stateId, nextCount);
-      setStatus(`已删除 ${selectedState.name} 的 1 个坏样本。`);
+      updateSampleCount(stateId, nextCount);
+      props.onSampleCaptured?.(stateId, nextCount);
+      setDeletedSamples(samplesToDelete);
+      setSelectedSampleIds([]);
+      setSelectionMode(false);
+      setStatus(`已删除 ${selectedState.name} 的 ${samplesToDelete.length} 个坏样本。`);
     } catch {
       setStatus("删除样本失败，请重新尝试。");
     }
+  }
+
+  async function undoDeleteSamples() {
+    if (deletedSamples.length === 0) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        deletedSamples.map((sample) => sampleStore.saveSampleRecord(sample))
+      );
+      const stateId = deletedSamples[0].stateId;
+      const nextSamples = [
+        ...(samplesByState[stateId] ?? []),
+        ...deletedSamples
+      ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+      setSamplesByState((current) => ({
+        ...current,
+        [stateId]: nextSamples
+      }));
+      updateSampleCount(stateId, nextSamples.length);
+      props.onSampleCaptured?.(stateId, nextSamples.length);
+      setDeletedSamples([]);
+      setStatus(`已撤销删除，恢复 ${deletedSamples.length} 个样本。`);
+    } catch {
+      setStatus("撤销删除失败，请重新尝试。");
+    }
+  }
+
+  function toggleSampleSelection(sampleId: string) {
+    setSelectedSampleIds((current) =>
+      current.includes(sampleId)
+        ? current.filter((id) => id !== sampleId)
+        : [...current, sampleId]
+    );
   }
 
   function updateSampleCount(stateId: string, count: number) {
@@ -255,23 +321,65 @@ export function CaptureScreen(props: {
         <p className="muted">
           当前查看：{selectedState?.name ?? "未选择状态"}。拍坏的样本可以删除，再重新采集。
         </p>
+        {deletedSamples.length > 0 && (
+          <button className="secondary-button" onClick={undoDeleteSamples} type="button">
+            撤销删除
+          </button>
+        )}
         {selectedSamples.length > 0 ? (
-          <div
-            aria-label={`${selectedState?.name ?? "状态"} 样本列表，${selectedSamples.length} 个样本`}
-            className="sample-list sample-list-scroll"
-            role="region"
-          >
-            {selectedSamples.map((sample, index) => (
-              <SamplePreview
-                index={index}
-                key={sample.id}
-                onDelete={() => deleteSample(sample)}
-                onOpenLargePreview={setLargePreview}
-                sample={sample}
-                stateName={selectedState?.name ?? "状态"}
-              />
-            ))}
-          </div>
+          <>
+            <div className="sample-bulk-actions">
+              {selectionMode ? (
+                <>
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setSelectionMode(false);
+                      setSelectedSampleIds([]);
+                    }}
+                    type="button"
+                  >
+                    取消选择
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={selectedSampleIds.length === 0}
+                    onClick={deleteSelectedSamples}
+                    type="button"
+                  >
+                    删除选中的 {selectedSampleIds.length} 个样本
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="secondary-button"
+                  onClick={() => setSelectionMode(true)}
+                  type="button"
+                >
+                  批量选择
+                </button>
+              )}
+            </div>
+            <div
+              aria-label={`${selectedState?.name ?? "状态"} 样本列表，${selectedSamples.length} 个样本`}
+              className="sample-list sample-list-scroll"
+              role="region"
+            >
+              {selectedSamples.map((sample, index) => (
+                <SamplePreview
+                  index={index}
+                  isSelected={selectedSampleIds.includes(sample.id)}
+                  isSelectionMode={selectionMode}
+                  key={sample.id}
+                  onDelete={() => deleteSample(sample)}
+                  onOpenLargePreview={setLargePreview}
+                  onToggleSelection={() => toggleSampleSelection(sample.id)}
+                  sample={sample}
+                  stateName={selectedState?.name ?? "状态"}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <p className="empty-note">这个状态还没有样本。开启摄像头后点击“采集样本”。</p>
         )}
@@ -314,14 +422,20 @@ function createStateNameDrafts(states: CaptureState[]) {
 
 function SamplePreview({
   index,
+  isSelected,
+  isSelectionMode,
   onDelete,
   onOpenLargePreview,
+  onToggleSelection,
   sample,
   stateName
 }: {
   index: number;
+  isSelected: boolean;
+  isSelectionMode: boolean;
   onDelete: () => void;
   onOpenLargePreview: (preview: { label: string; url: string }) => void;
+  onToggleSelection: () => void;
   sample: TrainingSampleRecord;
   stateName: string;
 }) {
@@ -354,13 +468,25 @@ function SamplePreview({
       <div className="sample-card-body">
         <strong>{sampleLabel}</strong>
         <span>{formatSampleTime(sample.createdAt)}</span>
-        <button
-          className="secondary-button"
-          onClick={onDelete}
-          type="button"
-        >
-          删除 {stateName} 样本 {sampleNumber}
-        </button>
+        {isSelectionMode ? (
+          <label className="sample-select-control">
+            <input
+              aria-label={`选择 ${sampleLabel}`}
+              checked={isSelected}
+              onChange={onToggleSelection}
+              type="checkbox"
+            />
+            <span>选择</span>
+          </label>
+        ) : (
+          <button
+            className="secondary-button"
+            onClick={onDelete}
+            type="button"
+          >
+            删除 {stateName} 样本 {sampleNumber}
+          </button>
+        )}
       </div>
     </div>
   );

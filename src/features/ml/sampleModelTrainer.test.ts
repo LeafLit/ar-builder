@@ -21,8 +21,10 @@ function createFakeSampleStore(samples: TrainingSampleRecord[]): SampleStore {
   return {
     saveSample: vi.fn(),
     listByState: vi.fn(async (stateId) => samples.filter((sample) => sample.stateId === stateId)),
+    listByProject: vi.fn(async (projectId) => samples.filter((sample) => sample.projectId === projectId)),
     getSampleBlob: vi.fn(),
-    deleteSample: vi.fn()
+    deleteSample: vi.fn(),
+    saveSampleRecord: vi.fn(async (sample) => sample)
   };
 }
 

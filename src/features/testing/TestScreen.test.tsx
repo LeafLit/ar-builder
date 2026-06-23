@@ -71,6 +71,37 @@ describe("TestScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("当前识别：状态 A");
   });
 
+  it("marks visual outputs with an entry transition class", () => {
+    render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+
+    expect(screen.getByText("状态 A 的 AR 输出").closest(".ar-test-overlay")).toHaveClass(
+      "ar-test-overlay-enter"
+    );
+  });
+
+  it("vibrates once when entering a recognized state", () => {
+    const vibrate = vi.fn();
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        onBackHome={vi.fn()}
+        vibrate={vibrate}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 A" }));
+    fireEvent.click(screen.getByRole("button", { name: "模拟识别状态 B" }));
+
+    expect(vibrate).toHaveBeenCalledTimes(2);
+    expect(vibrate).toHaveBeenNthCalledWith(1, 35);
+    expect(vibrate).toHaveBeenNthCalledWith(2, 35);
+  });
+
   it("uses custom state names in manual recognition status and counters", () => {
     render(
       <TestScreen

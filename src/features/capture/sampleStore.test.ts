@@ -35,4 +35,37 @@ describe("sampleStore", () => {
 
     await expect(store.getSampleBlob(saved.id)).resolves.toBeUndefined();
   });
+
+  it("lists all samples for one project", async () => {
+    const store = createSampleStore();
+    const blob = new Blob(["sample"], { type: "image/jpeg" });
+
+    await store.saveSample("project_1", "state_a", blob);
+    await store.saveSample("project_1", "state_b", blob);
+    await store.saveSample("project_2", "state_a", blob);
+
+    const samples = await store.listByProject("project_1");
+
+    expect(samples.map((sample) => sample.projectId)).toEqual(["project_1", "project_1"]);
+    expect(samples.map((sample) => sample.stateId)).toEqual(["state_a", "state_b"]);
+  });
+
+  it("restores an imported sample record with its original blob", async () => {
+    const store = createSampleStore();
+    const blob = new Blob(["imported"], { type: "image/png" });
+
+    await store.saveSampleRecord({
+      id: "sample_imported",
+      projectId: "project_imported",
+      stateId: "state_a",
+      createdAt: "2026-06-23T08:00:00.000Z",
+      blob
+    });
+
+    const samples = await store.listByProject("project_imported");
+
+    expect(samples).toHaveLength(1);
+    expect(samples[0].id).toBe("sample_imported");
+    expect(samples[0].blob).toBeTruthy();
+  });
 });
