@@ -116,6 +116,39 @@ describe("TrainScreen", () => {
     expect(screen.getByText("已满足真实训练条件：2 个状态都有样本。")).toBeInTheDocument();
   });
 
+  it("shows sample quality guidance before training", () => {
+    render(
+      <TrainScreen
+        states={[
+          { id: "state_a", name: "杯子左边", order: 0 },
+          { id: "state_b", name: "杯子右边", order: 1 }
+        ]}
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 2, state_b: 6 }}
+      />
+    );
+
+    expect(screen.getByText("样本质量提示")).toBeInTheDocument();
+    expect(screen.getByText("建议每个状态至少拍 5 张样本。")).toBeInTheDocument();
+    expect(screen.getByText("还建议补拍：杯子左边 还差 3 张。")).toBeInTheDocument();
+    expect(screen.getByText("光线尽量充足，避免画面太暗或反光。")).toBeInTheDocument();
+    expect(screen.getByText("背景尽量简单，别让无关物体抢镜。")).toBeInTheDocument();
+    expect(screen.getByText("同一个状态可以换一点角度和距离，帮助模型学得更稳。")).toBeInTheDocument();
+  });
+
+  it("confirms when each state reaches the recommended sample count", () => {
+    render(
+      <TrainScreen
+        onNext={vi.fn()}
+        projectId="project_1"
+        sampleCounts={{ state_a: 5, state_b: 7 }}
+      />
+    );
+
+    expect(screen.getByText("样本数量不错：每个状态都至少有 5 张。")).toBeInTheDocument();
+  });
+
   it("uses captured sample counts when no custom trainer is provided", async () => {
     render(
       <TrainScreen

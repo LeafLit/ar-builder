@@ -24,6 +24,8 @@ type TrainingState = {
   order?: number;
 };
 
+const RECOMMENDED_SAMPLE_COUNT = 5;
+
 function createDefaultTrainer(sampleCounts: Record<string, number>): ModelTrainer {
   return {
     async train() {
@@ -50,6 +52,26 @@ function createTrainingRequirementMessage(
   return `已满足真实训练条件：${states.length} 个状态都有样本。`;
 }
 
+function createSampleQualityMessage(
+  sampleCounts: Record<string, number>,
+  states: TrainingState[]
+) {
+  const statesNeedingMoreSamples = states
+    .map((state) => ({
+      name: state.name,
+      missingCount: Math.max(0, RECOMMENDED_SAMPLE_COUNT - (sampleCounts[state.id] ?? 0))
+    }))
+    .filter((state) => state.missingCount > 0);
+
+  if (statesNeedingMoreSamples.length === 0) {
+    return `样本数量不错：每个状态都至少有 ${RECOMMENDED_SAMPLE_COUNT} 张。`;
+  }
+
+  return `还建议补拍：${statesNeedingMoreSamples
+    .map((state) => `${state.name} 还差 ${state.missingCount} 张`)
+    .join("、")}。`;
+}
+
 export function TrainScreen(props: {
   projectId?: string;
   states?: TrainingState[];
@@ -63,6 +85,7 @@ export function TrainScreen(props: {
   const sampleCounts = props.sampleCounts ?? createDefaultSampleCounts(states);
   const trainer = props.trainer ?? createDefaultTrainer(sampleCounts);
   const trainingRequirementMessage = createTrainingRequirementMessage(sampleCounts, states);
+  const sampleQualityMessage = createSampleQualityMessage(sampleCounts, states);
   const [status, setStatus] = useState("准备好后点击开始训练。");
   const [isTraining, setIsTraining] = useState(false);
   const [trained, setTrained] = useState(false);
@@ -101,6 +124,16 @@ export function TrainScreen(props: {
           ))}
         </div>
         <p className="training-hint">{trainingRequirementMessage}</p>
+        <div className="quality-tip-panel">
+          <h2>样本质量提示</h2>
+          <p>建议每个状态至少拍 {RECOMMENDED_SAMPLE_COUNT} 张样本。</p>
+          <p>{sampleQualityMessage}</p>
+          <ul>
+            <li>光线尽量充足，避免画面太暗或反光。</li>
+            <li>背景尽量简单，别让无关物体抢镜。</li>
+            <li>同一个状态可以换一点角度和距离，帮助模型学得更稳。</li>
+          </ul>
+        </div>
         <p className="muted" role="status">
           {status}
         </p>

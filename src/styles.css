@@ -226,6 +226,33 @@ textarea {
   background: #f8fafc;
 }
 
+.quality-tip-panel {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px;
+  color: #14532d;
+  background: #f0fdf4;
+}
+
+.quality-tip-panel h2,
+.quality-tip-panel p,
+.quality-tip-panel ul {
+  margin: 0;
+}
+
+.quality-tip-panel h2 {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.quality-tip-panel ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 20px;
+}
+
 .sample-preview-dialog {
   position: fixed;
   inset: 0;

@@ -194,6 +194,15 @@ export function CaptureScreen(props: {
         </p>
       </div>
 
+      <div className="quality-tip-panel">
+        <h2>拍样本小贴士</h2>
+        <ul>
+          <li>每个状态尽量拍 5 张以上。</li>
+          <li>光线尽量充足，避免画面太暗或反光。</li>
+          <li>换一点角度、距离和背景，但不要把两个状态拍得太像。</li>
+        </ul>
+      </div>
+
       <div className="panel stack">
         <h2>选择状态</h2>
         <div className="state-name-list">

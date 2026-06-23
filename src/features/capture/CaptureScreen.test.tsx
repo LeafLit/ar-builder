@@ -132,6 +132,14 @@ describe("CaptureScreen", () => {
     expect(screen.getByRole("button", { name: "拳头 1 个样本" })).toBeInTheDocument();
   });
 
+  it("shows beginner tips for collecting better training samples", () => {
+    render(<CaptureScreen onNext={vi.fn()} />);
+
+    expect(screen.getByText("拍样本小贴士")).toBeInTheDocument();
+    expect(screen.getByText("每个状态尽量拍 5 张以上。")).toBeInTheDocument();
+    expect(screen.getByText("换一点角度、距离和背景，但不要把两个状态拍得太像。")).toBeInTheDocument();
+  });
+
   it("loads saved samples for the selected state so users can review them", async () => {
     const sampleStore = createFakeSampleStore();
     vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
