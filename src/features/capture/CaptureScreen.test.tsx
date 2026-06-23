@@ -62,6 +62,106 @@ describe("CaptureScreen", () => {
     expect(onStateNameChange).toHaveBeenCalledWith("state_a", "拳头");
   });
 
+  it("lets users add an extra state from state management", () => {
+    const onAddState = vi.fn();
+
+    render(
+      <CaptureScreen
+        states={[
+          { id: "state_a", name: "Alpha", order: 0 },
+          { id: "state_b", name: "Beta", order: 1 }
+        ]}
+        onAddState={onAddState}
+        onNext={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "添加状态" }));
+
+    expect(onAddState).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the add state action at the four-state limit", () => {
+    render(
+      <CaptureScreen
+        states={[
+          { id: "state_a", name: "Alpha", order: 0 },
+          { id: "state_b", name: "Beta", order: 1 },
+          { id: "state_3", name: "Third", order: 2 },
+          { id: "state_4", name: "Fourth", order: 3 }
+        ]}
+        onAddState={vi.fn()}
+        onNext={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "添加状态" })).not.toBeInTheDocument();
+    expect(screen.getByText("最多可以创建 4 个状态。")).toBeInTheDocument();
+  });
+
+  it("lets users delete extra states but keeps default states", async () => {
+    const onDeleteState = vi.fn();
+
+    render(
+      <CaptureScreen
+        states={[
+          { id: "state_a", name: "Alpha", order: 0 },
+          { id: "state_b", name: "Beta", order: 1 },
+          { id: "state_3", name: "Third", order: 2 }
+        ]}
+        onDeleteState={onDeleteState}
+        onNext={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "删除 Alpha" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "删除 Third" }));
+
+    await waitFor(() => {
+      expect(onDeleteState).toHaveBeenCalledWith("state_3");
+    });
+  });
+
+  it("deletes saved samples before deleting an extra state", async () => {
+    const sampleStore = createFakeSampleStore();
+    const onDeleteState = vi.fn();
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_3"
+        ? [
+            {
+              id: "sample_extra",
+              projectId: "project_1",
+              stateId: "state_3",
+              createdAt: "2026-06-10T00:00:00.000Z",
+              blob: new Blob(["sample"], { type: "image/jpeg" })
+            }
+          ]
+        : []
+    );
+
+    render(
+      <CaptureScreen
+        sampleStore={sampleStore}
+        projectId="project_1"
+        states={[
+          { id: "state_a", name: "Alpha", order: 0 },
+          { id: "state_b", name: "Beta", order: 1 },
+          { id: "state_3", name: "Third", order: 2 }
+        ]}
+        onDeleteState={onDeleteState}
+        onNext={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "删除 Third" }));
+
+    await waitFor(() => {
+      expect(sampleStore.deleteSample).toHaveBeenCalledWith("sample_extra");
+    });
+    expect(onDeleteState).toHaveBeenCalledWith("state_3");
+  });
+
   it("allows users to temporarily clear a state name while editing", () => {
     function ControlledCaptureScreen() {
       const [states, setStates] = useState([

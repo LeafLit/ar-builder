@@ -77,6 +77,16 @@ describe("App", () => {
     expect(screen.getByText("拳头输出")).toBeInTheDocument();
   });
 
+  it("adds a third state from the capture screen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "新建项目" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加状态" }));
+
+    expect(screen.getByRole("button", { name: "状态 3 0 个样本" })).toBeInTheDocument();
+    expect(screen.getByLabelText("状态 3 名称")).toBeInTheDocument();
+  });
+
   it("saves and reopens a local project for editing", async () => {
     const savedProjects: Project[] = [];
     const repository: ProjectRepository = {

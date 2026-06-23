@@ -272,3 +272,22 @@ iOS：
   https://web.dev/learn/pwa/installation
 - Apple Safari HTML Reference：iOS 主屏幕 Web App 相关 meta。  
   https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html
+## 2026-06-23 补充：多状态实机测试
+
+本次多状态 MVP 发布后，请重点测试以下功能：
+
+1. 新建项目后进入采集页，点击“添加状态”，确认出现“状态 3”。
+2. 再次点击“添加状态”，确认出现“状态 4”，并确认最多只能创建 4 个状态。
+3. 给状态 3 / 状态 4 改名，例如“靠近”“远离”。
+4. 尝试删除状态 3 或状态 4，确认可以删除；确认状态 A / 状态 B 没有删除按钮。
+5. 为 3 个或 4 个状态分别采集至少 1 张样本。
+6. 进入训练页，确认所有状态都显示样本数量；缺样本时会提示缺哪个状态。
+7. 训练完成后进入编辑页，确认每个状态都可以配置 AR 输出。
+8. 进入测试页，使用模拟识别按钮确认每个状态都能触发自己的输出。
+9. 保存项目，返回首页再打开，确认多状态名称和输出还在。
+10. 导出项目再导入，打开导入副本，确认多状态配置仍然存在。
+
+测试地址：
+
+- 默认线上地址：`https://leaflit.github.io/ar-builder/`
+- 防缓存地址模板：`https://leaflit.github.io/ar-builder/?v=最新提交短哈希`

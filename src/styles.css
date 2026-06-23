@@ -172,6 +172,22 @@ textarea {
   gap: 10px;
 }
 
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-heading-row h2 {
+  margin: 0;
+}
+
+.state-management-row {
+  display: grid;
+  gap: 8px;
+}
+
 .state-name-list input {
   min-height: 44px;
   width: 100%;

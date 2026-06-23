@@ -10,6 +10,8 @@ import type { RecognitionModel } from "../features/ml/classifierTypes";
 import { restoreRecognitionModel } from "../features/ml/recognitionModelSnapshot";
 import { normalizeProjectSettings } from "../features/projects/projectTypes";
 import {
+  canDeleteProjectState,
+  createNextProjectState,
   createDefaultSampleCounts,
   DEFAULT_PROJECT_STATES,
   normalizeEditableProjectStates,
@@ -32,6 +34,8 @@ export type AppState = {
 export type AppAction =
   | { type: "goTo"; screen: AppScreen }
   | { type: "selectProject"; projectId: string }
+  | { type: "addState" }
+  | { type: "deleteState"; stateId: string }
   | { type: "renameState"; stateId: string; name: string }
   | { type: "recordSample"; stateId: string; count: number }
   | { type: "saveTextOutputs"; outputs: Record<string, string | StateOutputDraft> }
@@ -60,6 +64,56 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, screen: action.screen };
     case "selectProject":
       return { ...state, projectId: action.projectId };
+    case "addState": {
+      const nextState = createNextProjectState(state.states);
+
+      if (!nextState) {
+        return state;
+      }
+
+      return {
+        ...state,
+        states: [...state.states, nextState],
+        sampleCounts: {
+          ...state.sampleCounts,
+          [nextState.id]: 0
+        },
+        recognitionModel: undefined
+      };
+    }
+    case "deleteState": {
+      if (!canDeleteProjectState(action.stateId)) {
+        return state;
+      }
+
+      const nextStates = state.states.filter((item) => item.id !== action.stateId);
+
+      if (nextStates.length === state.states.length) {
+        return state;
+      }
+
+      const nextSampleCounts = { ...state.sampleCounts };
+      const removedAssetIds = new Set(
+        state.assets
+          .filter((asset) => asset.id.endsWith(`_${action.stateId}`))
+          .map((asset) => asset.id)
+      );
+
+      delete nextSampleCounts[action.stateId];
+
+      return {
+        ...state,
+        states: nextStates.map((item, order) => ({ ...item, order })),
+        sampleCounts: nextSampleCounts,
+        assets: state.assets.filter((asset) => !removedAssetIds.has(asset.id)),
+        bindings: state.bindings.filter(
+          (binding) =>
+            binding.stateId !== action.stateId &&
+            !removedAssetIds.has(binding.action.assetId)
+        ),
+        recognitionModel: undefined
+      };
+    }
     case "renameState": {
       const name = action.name.trim();
 

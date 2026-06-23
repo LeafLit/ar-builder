@@ -141,6 +141,10 @@ export function App({
             projectId={state.projectId}
             sampleStore={sampleStore}
             states={state.states}
+            onAddState={() => dispatch({ type: "addState" })}
+            onDeleteState={(stateId) =>
+              dispatch({ type: "deleteState", stateId })
+            }
             onStateNameChange={(stateId, name) =>
               dispatch({ type: "renameState", stateId, name })
             }

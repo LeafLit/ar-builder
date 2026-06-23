@@ -53,6 +53,100 @@ describe("appReducer", () => {
     expect(state.states[0].name).toBe("状态 A");
   });
 
+  it("adds extra states up to the project state limit", () => {
+    const withThirdState = appReducer(initialAppState, { type: "addState" });
+    const withFourthState = appReducer(withThirdState, { type: "addState" });
+    const stillFourStates = appReducer(withFourthState, { type: "addState" });
+
+    expect(withThirdState.states.map((state) => state.id)).toEqual([
+      "state_a",
+      "state_b",
+      "state_3"
+    ]);
+    expect(withFourthState.states.map((state) => state.id)).toEqual([
+      "state_a",
+      "state_b",
+      "state_3",
+      "state_4"
+    ]);
+    expect(stillFourStates.states).toEqual(withFourthState.states);
+    expect(withThirdState.sampleCounts.state_3).toBe(0);
+  });
+
+  it("deletes only extra states and clears their draft data", () => {
+    const model = {
+      classifier: {
+        predict: vi.fn()
+      },
+      embedder: {
+        embed: vi.fn()
+      }
+    };
+    const stateWithExtraState = appReducer(
+      {
+        ...initialAppState,
+        states: [
+          ...initialAppState.states,
+          { id: "state_3", name: "Third", order: 2 }
+        ],
+        sampleCounts: {
+          ...initialAppState.sampleCounts,
+          state_3: 3
+        },
+        assets: [
+          { id: "asset_text_state_3", type: "text", name: "Third text", content: "Third" },
+          { id: "asset_text_state_a", type: "text", name: "A text", content: "A" }
+        ],
+        bindings: [
+          {
+            id: "binding_state_3",
+            stateId: "state_3",
+            action: {
+              type: "show",
+              assetId: "asset_text_state_3",
+              visible: true,
+              transform: {
+                position: [0, 0, 0],
+                rotation: [0, 0, 0],
+                scale: [1, 1, 1]
+              }
+            }
+          },
+          {
+            id: "binding_state_a",
+            stateId: "state_a",
+            action: {
+              type: "show",
+              assetId: "asset_text_state_a",
+              visible: true,
+              transform: {
+                position: [0, 0, 0],
+                rotation: [0, 0, 0],
+                scale: [1, 1, 1]
+              }
+            }
+          }
+        ],
+        recognitionModel: model
+      },
+      { type: "deleteState", stateId: "state_3" }
+    );
+    const cannotDeleteDefault = appReducer(stateWithExtraState, {
+      type: "deleteState",
+      stateId: "state_a"
+    });
+
+    expect(stateWithExtraState.states.map((state) => state.id)).toEqual([
+      "state_a",
+      "state_b"
+    ]);
+    expect(stateWithExtraState.sampleCounts).not.toHaveProperty("state_3");
+    expect(stateWithExtraState.assets.map((asset) => asset.id)).toEqual(["asset_text_state_a"]);
+    expect(stateWithExtraState.bindings.map((binding) => binding.stateId)).toEqual(["state_a"]);
+    expect(stateWithExtraState.recognitionModel).toBeUndefined();
+    expect(cannotDeleteDefault).toBe(stateWithExtraState);
+  });
+
   it("loads a saved project for editing", () => {
     const project: Project = {
       id: "project_saved",

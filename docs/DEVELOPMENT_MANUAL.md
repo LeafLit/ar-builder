@@ -305,3 +305,11 @@ type ARAdapter = {
 - 规则引擎接口。
 - 项目导入/导出格式。
 - 使用数据统计接口，方便未来做可用性分析。
+## 2026-06-23 补充：多状态实现说明
+
+- 状态数据仍然使用 `Project.states` 和应用内 `state.states`。
+- `src/features/projects/projectStates.ts` 负责统一规范化状态：旧项目会补齐状态 A / B，额外状态最多保留到 4 个。
+- 新增状态使用稳定 id：`state_3`、`state_4`。
+- 默认状态 A / B 不能删除；额外状态可以删除。
+- 删除额外状态时，reducer 需要同步清理该状态的 `sampleCounts`、输出 `assets`、`bindings` 和 `recognitionModel`，避免测试页继续使用旧模型。
+- 采集、训练、编辑、测试页面都应继续从 `states` 数组渲染，不要重新写死状态 A / B。

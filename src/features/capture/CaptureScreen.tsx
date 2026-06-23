@@ -6,8 +6,10 @@ import {
   type TrainingSampleRecord
 } from "./sampleStore";
 import {
+  canDeleteProjectState,
   createDefaultSampleCounts,
-  DEFAULT_PROJECT_STATES
+  DEFAULT_PROJECT_STATES,
+  MAX_PROJECT_STATES
 } from "../projects/projectStates";
 
 type CaptureState = {
@@ -21,6 +23,8 @@ export function CaptureScreen(props: {
   cameraService?: CameraService;
   sampleStore?: SampleStore;
   states?: CaptureState[];
+  onAddState?: () => void;
+  onDeleteState?: (stateId: string) => void;
   onStateNameChange?: (stateId: string, name: string) => void;
   onSampleCaptured?: (stateId: string, count: number) => void;
   onNext: () => void;
@@ -60,10 +64,17 @@ export function CaptureScreen(props: {
   const selectedState =
     states.find((state) => state.id === selectedStateId) ?? states[0];
   const selectedSamples = samplesByState[selectedState?.id ?? ""] ?? [];
+  const canAddState = states.length < MAX_PROJECT_STATES;
 
   useEffect(() => {
     setStateNameDrafts(createStateNameDrafts(states));
   }, [states]);
+
+  useEffect(() => {
+    if (!states.some((state) => state.id === selectedStateId)) {
+      setSelectedStateId(states[0]?.id ?? "state_a");
+    }
+  }, [selectedStateId, states]);
 
   useEffect(() => {
     setSelectionMode(false);
@@ -248,6 +259,35 @@ export function CaptureScreen(props: {
     props.onStateNameChange?.(stateId, name);
   }
 
+  async function deleteState(state: CaptureState) {
+    try {
+      const loadedSamples = samplesByState[state.id] ?? [];
+      const samplesToDelete =
+        loadedSamples.length > 0
+          ? loadedSamples
+          : (await sampleStore.listByState(state.id)).filter(
+              (sample) => sample.projectId === projectId
+            );
+
+      await Promise.all(samplesToDelete.map((sample) => sampleStore.deleteSample(sample.id)));
+      setSamplesByState((current) => {
+        const nextSamplesByState = { ...current };
+
+        delete nextSamplesByState[state.id];
+        return nextSamplesByState;
+      });
+      updateSampleCount(state.id, 0);
+      props.onSampleCaptured?.(state.id, 0);
+      props.onDeleteState?.(state.id);
+      setDeletedSampleGroups([]);
+      setSelectedSampleIds([]);
+      setSelectionMode(false);
+      setStatus(`已删除 ${state.name} 状态。`);
+    } catch {
+      setStatus(`删除 ${state.name} 状态失败，请重试。`);
+    }
+  }
+
   return (
     <div className="stack">
       <div aria-label="采集主操作" className="panel capture-workspace" role="region">
@@ -300,20 +340,44 @@ export function CaptureScreen(props: {
       </details>
 
       <div className="panel stack">
-        <h2>状态名称</h2>
+        <div className="section-heading-row">
+          <h2>状态管理</h2>
+          {canAddState ? (
+            <button
+              className="secondary-button"
+              onClick={props.onAddState}
+              type="button"
+            >
+              添加状态
+            </button>
+          ) : (
+            <span className="muted">最多可以创建 {MAX_PROJECT_STATES} 个状态。</span>
+          )}
+        </div>
         <div className="state-name-list">
           {states.map((state) => (
-            <label className="stack compact-stack" key={state.id}>
-              <span>{state.name} 名称</span>
-              <input
-                aria-label={`${state.name} 名称`}
-                onChange={(event) =>
-                  updateStateNameDraft(state.id, event.target.value)
-                }
-                type="text"
-                value={stateNameDrafts[state.id] ?? state.name}
-              />
-            </label>
+            <div className="state-management-row" key={state.id}>
+              <label className="stack compact-stack">
+                <span>{state.name} 名称</span>
+                <input
+                  aria-label={`${state.name} 名称`}
+                  onChange={(event) =>
+                    updateStateNameDraft(state.id, event.target.value)
+                  }
+                  type="text"
+                  value={stateNameDrafts[state.id] ?? state.name}
+                />
+              </label>
+              {canDeleteProjectState(state.id) && (
+                <button
+                  className="secondary-button"
+                  onClick={() => void deleteState(state)}
+                  type="button"
+                >
+                  删除 {state.name}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
