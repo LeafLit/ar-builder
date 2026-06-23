@@ -51,7 +51,7 @@ export function CaptureScreen(props: {
     label: string;
     url: string;
   } | null>(null);
-  const [deletedSamples, setDeletedSamples] = useState<TrainingSampleRecord[]>([]);
+  const [deletedSampleGroups, setDeletedSampleGroups] = useState<TrainingSampleRecord[][]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSampleIds, setSelectedSampleIds] = useState<string[]>([]);
   const [cameraReady, setCameraReady] = useState(false);
@@ -143,7 +143,7 @@ export function CaptureScreen(props: {
       }));
       updateSampleCount(selectedState.id, nextCount);
       props.onSampleCaptured?.(selectedState.id, nextCount);
-      setDeletedSamples([]);
+      setDeletedSampleGroups([]);
       setStatus(`已为 ${selectedState.name} 采集 ${nextCount} 个样本。`);
     } catch {
       setStatus("采集样本失败，请重新尝试。");
@@ -186,7 +186,7 @@ export function CaptureScreen(props: {
       }));
       updateSampleCount(stateId, nextCount);
       props.onSampleCaptured?.(stateId, nextCount);
-      setDeletedSamples(samplesToDelete);
+      setDeletedSampleGroups((current) => [...current, samplesToDelete]);
       setSelectedSampleIds([]);
       setSelectionMode(false);
       setStatus(`已删除 ${selectedState.name} 的 ${samplesToDelete.length} 个坏样本。`);
@@ -196,18 +196,20 @@ export function CaptureScreen(props: {
   }
 
   async function undoDeleteSamples() {
-    if (deletedSamples.length === 0) {
+    if (deletedSampleGroups.length === 0) {
       return;
     }
 
+    const samplesToRestore = deletedSampleGroups[deletedSampleGroups.length - 1];
+
     try {
       await Promise.all(
-        deletedSamples.map((sample) => sampleStore.saveSampleRecord(sample))
+        samplesToRestore.map((sample) => sampleStore.saveSampleRecord(sample))
       );
-      const stateId = deletedSamples[0].stateId;
+      const stateId = samplesToRestore[0].stateId;
       const nextSamples = [
         ...(samplesByState[stateId] ?? []),
-        ...deletedSamples
+        ...samplesToRestore
       ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
       setSamplesByState((current) => ({
@@ -216,8 +218,8 @@ export function CaptureScreen(props: {
       }));
       updateSampleCount(stateId, nextSamples.length);
       props.onSampleCaptured?.(stateId, nextSamples.length);
-      setDeletedSamples([]);
-      setStatus(`已撤销删除，恢复 ${deletedSamples.length} 个样本。`);
+      setDeletedSampleGroups((current) => current.slice(0, -1));
+      setStatus(`已撤销删除，恢复 ${samplesToRestore.length} 个样本。`);
     } catch {
       setStatus("撤销删除失败，请重新尝试。");
     }
@@ -321,7 +323,7 @@ export function CaptureScreen(props: {
         <p className="muted">
           当前查看：{selectedState?.name ?? "未选择状态"}。拍坏的样本可以删除，再重新采集。
         </p>
-        {deletedSamples.length > 0 && (
+        {deletedSampleGroups.length > 0 && (
           <button className="secondary-button" onClick={undoDeleteSamples} type="button">
             撤销删除
           </button>

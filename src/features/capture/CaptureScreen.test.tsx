@@ -353,6 +353,52 @@ describe("CaptureScreen", () => {
     expect(onSampleCaptured).toHaveBeenLastCalledWith("state_a", 1);
   });
 
+  it("can undo multiple consecutive single-sample deletes", async () => {
+    const sampleStore = createFakeSampleStore();
+    let stateASamples: TrainingSampleRecord[] = Array.from({ length: 3 }, (_, index) => ({
+      id: `sample_${index + 1}`,
+      projectId: "project_1",
+      stateId: "state_a",
+      createdAt: `2026-06-10T00:0${index}:00.000Z`,
+      blob: new Blob([`sample-${index + 1}`], { type: "image/jpeg" })
+    }));
+    vi.mocked(sampleStore.listByState).mockImplementation(async (stateId) =>
+      stateId === "state_a" ? stateASamples : []
+    );
+    vi.mocked(sampleStore.deleteSample).mockImplementation(async (sampleId) => {
+      stateASamples = stateASamples.filter((sample) => sample.id !== sampleId);
+    });
+    vi.mocked(sampleStore.saveSampleRecord).mockImplementation(async (sample) => {
+      stateASamples = [...stateASamples, sample].sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt)
+      );
+      return sample;
+    });
+
+    render(
+      <CaptureScreen sampleStore={sampleStore} projectId="project_1" onNext={vi.fn()} />
+    );
+
+    await screen.findByRole("button", { name: "状态 A 3 个样本" });
+    fireEvent.click(screen.getByRole("button", { name: "删除 状态 A 样本 1" }));
+    await screen.findByRole("button", { name: "状态 A 2 个样本" });
+    fireEvent.click(screen.getByRole("button", { name: "删除 状态 A 样本 1" }));
+    await screen.findByRole("button", { name: "状态 A 1 个样本" });
+
+    fireEvent.click(screen.getByRole("button", { name: "撤销删除" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 2 个样本" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "撤销删除" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "状态 A 3 个样本" })).toBeInTheDocument();
+    });
+    expect(sampleStore.saveSampleRecord).toHaveBeenCalledTimes(2);
+  });
+
   it("deletes selected samples in a batch and can undo the batch", async () => {
     const sampleStore = createFakeSampleStore();
     let stateASamples: TrainingSampleRecord[] = Array.from({ length: 3 }, (_, index) => ({
