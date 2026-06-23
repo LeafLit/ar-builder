@@ -89,7 +89,7 @@ textarea {
 }
 
 .camera-preview {
-  min-height: 280px;
+  min-height: 220px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   position: relative;
@@ -103,7 +103,7 @@ textarea {
 .camera-preview video {
   width: 100%;
   height: 100%;
-  min-height: 280px;
+  min-height: 220px;
   object-fit: cover;
 }
 
@@ -128,6 +128,33 @@ textarea {
 .state-button.active {
   border-color: #0f766e;
   background: #ccfbf1;
+}
+
+.capture-workspace {
+  display: grid;
+  gap: 10px;
+}
+
+.capture-current-state {
+  margin: 0;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #0f172a;
+  background: #f0fdfa;
+  font-weight: 700;
+}
+
+.compact-state-grid {
+  gap: 8px;
+}
+
+.compact-state-grid .state-button {
+  min-height: 42px;
+}
+
+.capture-action-row {
+  margin-top: 0;
 }
 
 .state-summary {
@@ -236,7 +263,23 @@ textarea {
   background: #f0fdf4;
 }
 
+.compact-tip-panel {
+  display: block;
+  padding: 10px 12px;
+}
+
+.compact-tip-panel summary {
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.compact-tip-panel ul {
+  margin-top: 8px;
+}
+
 .quality-tip-panel h2,
+.quality-tip-panel summary,
 .quality-tip-panel p,
 .quality-tip-panel ul {
   margin: 0;

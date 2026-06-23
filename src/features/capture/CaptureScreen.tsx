@@ -182,7 +182,7 @@ export function CaptureScreen(props: {
 
   return (
     <div className="stack">
-      <div className="panel stack">
+      <div aria-label="采集主操作" className="panel capture-workspace" role="region">
         <h1>采集训练样本</h1>
         <p className="muted">对每个真实世界状态拍几张样本，例如物体在左边和右边。</p>
         <div className="camera-preview">
@@ -192,19 +192,47 @@ export function CaptureScreen(props: {
         <p className="muted" role="status">
           {status}
         </p>
+        <p className="capture-current-state">
+          当前采集：{selectedState?.name ?? "未选择状态"}，已有 {sampleCounts[selectedState?.id ?? ""] ?? 0} 个样本
+        </p>
+        <div className="state-grid compact-state-grid">
+          {states.map((state) => (
+            <button
+              className={state.id === selectedStateId ? "state-button active" : "state-button"}
+              key={state.id}
+              onClick={() => setSelectedStateId(state.id)}
+              type="button"
+            >
+              {state.name} {sampleCounts[state.id] ?? 0} 个样本
+            </button>
+          ))}
+        </div>
+        <div className="action-row capture-action-row">
+          <button className="secondary-button" onClick={startCamera} type="button">
+            开启摄像头
+          </button>
+          <button
+            className="primary-button"
+            disabled={!cameraReady}
+            onClick={captureSample}
+            type="button"
+          >
+            采集样本
+          </button>
+        </div>
       </div>
 
-      <div className="quality-tip-panel">
-        <h2>拍样本小贴士</h2>
+      <details className="quality-tip-panel compact-tip-panel">
+        <summary>拍样本小贴士</summary>
         <ul>
           <li>每个状态尽量拍 5 张以上。</li>
           <li>光线尽量充足，避免画面太暗或反光。</li>
           <li>换一点角度、距离和背景，但不要把两个状态拍得太像。</li>
         </ul>
-      </div>
+      </details>
 
       <div className="panel stack">
-        <h2>选择状态</h2>
+        <h2>状态名称</h2>
         <div className="state-name-list">
           {states.map((state) => (
             <label className="stack compact-stack" key={state.id}>
@@ -220,32 +248,6 @@ export function CaptureScreen(props: {
             </label>
           ))}
         </div>
-        <div className="state-grid">
-          {states.map((state) => (
-            <button
-              className={state.id === selectedStateId ? "state-button active" : "state-button"}
-              key={state.id}
-              onClick={() => setSelectedStateId(state.id)}
-              type="button"
-            >
-              {state.name} {sampleCounts[state.id] ?? 0} 个样本
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="action-row">
-        <button className="secondary-button" onClick={startCamera} type="button">
-          开启摄像头
-        </button>
-        <button
-          className="primary-button"
-          disabled={!cameraReady}
-          onClick={captureSample}
-          type="button"
-        >
-          采集样本
-        </button>
       </div>
 
       <div className="panel stack">

@@ -132,6 +132,23 @@ describe("CaptureScreen", () => {
     expect(screen.getByRole("button", { name: "拳头 1 个样本" })).toBeInTheDocument();
   });
 
+  it("keeps camera controls directly in the capture workspace", () => {
+    render(<CaptureScreen onNext={vi.fn()} />);
+
+    const captureWorkspace = screen.getByRole("region", { name: "采集主操作" });
+
+    expect(captureWorkspace).toContainElement(screen.getByLabelText("摄像头预览"));
+    expect(captureWorkspace).toContainElement(
+      screen.getByRole("button", { name: "开启摄像头" })
+    );
+    expect(captureWorkspace).toContainElement(
+      screen.getByRole("button", { name: "采集样本" })
+    );
+    expect(captureWorkspace).toContainElement(
+      screen.getByText("当前采集：状态 A，已有 0 个样本")
+    );
+  });
+
   it("shows beginner tips for collecting better training samples", () => {
     render(<CaptureScreen onNext={vi.fn()} />);
 
