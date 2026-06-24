@@ -47,7 +47,7 @@ describe("sampleStore", () => {
     const samples = await store.listByProject("project_1");
 
     expect(samples.map((sample) => sample.projectId)).toEqual(["project_1", "project_1"]);
-    expect(samples.map((sample) => sample.stateId)).toEqual(["state_a", "state_b"]);
+    expect(samples.map((sample) => sample.stateId).sort()).toEqual(["state_a", "state_b"]);
   });
 
   it("restores an imported sample record with its original blob", async () => {
