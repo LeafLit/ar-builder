@@ -313,3 +313,12 @@ type ARAdapter = {
 - 默认状态 A / B 不能删除；额外状态可以删除。
 - 删除额外状态时，reducer 需要同步清理该状态的 `sampleCounts`、输出 `assets`、`bindings` 和 `recognitionModel`，避免测试页继续使用旧模型。
 - 采集、训练、编辑、测试页面都应继续从 `states` 数组渲染，不要重新写死状态 A / B。
+
+## 2026-06-23 补充：WebXR 空间 AR 实验实现说明
+
+- WebXR 先作为测试页里的实验入口接入，不替换当前主线的相机识别 + 屏幕锚点叠加。
+- `SpatialARExperiment` 只负责显示实验入口、能力检测结果、启动按钮和“放置演示物体”按钮。
+- `webxrSpatialAdapter` 负责直接接触 `navigator.xr`、WebXR session 和 Three.js renderer，方便后续替换或扩展。
+- 测试页本身已经有一个主状态播报 `role="status"`，WebXR 实验卡片不要再额外使用 `role="status"`，避免自动化测试和读屏状态互相干扰。
+- WebXR 能力检测必须允许失败：`navigator.xr` 不存在、`isSessionSupported` 抛错、`requestSession` 不存在时，都要降级为“当前设备暂不支持 WebXR 空间 AR”。
+- v1 只验证能不能启动 WebXR 会话、能不能渲染和放置一个简单物体；暂时不接入训练识别结果、不保存空间锚点、不承诺平面检测。

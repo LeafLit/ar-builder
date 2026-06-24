@@ -126,3 +126,16 @@ gh run list --repo LeafLit/ar-builder --branch main --limit 3
 - 训练、编辑、测试仍然沿用同一组 `states`，所以新增状态会进入样本采集、训练检查、AR 输出配置和测试页模拟/识别流程。
 - 删除额外状态时，应用内会清理该状态的样本计数、输出资源、绑定和已训练模型，用户需要重新训练后再继续真实识别。
 - 本轮完成后需要实机测试：新增状态、采集样本、训练、编辑输出、测试触发、保存项目、导出导入后多状态是否还在。
+
+## 2026-06-23 补充：WebXR 空间 AR 实验 Spike v1
+
+- 本轮开始尝试 WebXR 空间 AR，但它仍然是“实验入口”，不是当前主流程的替代品。
+- 当前主路线仍然是：手机浏览器 PWA + 真实摄像头识别 + 屏幕锚点 AR 叠加。
+- 测试页新增“空间 AR 实验”区域：支持 WebXR immersive-ar 的 Android 浏览器可以尝试进入空间 AR，并放置一个简单的 3D 演示物体。
+- 不支持 WebXR 的设备会显示降级提示，并继续使用原来的相机识别 + 屏幕叠加测试流程。
+- v1 暂时不把训练识别结果绑定到 WebXR 空间物体，也暂时不做平面命中测试、准星或真实空间锚点保存。
+- 实现位置：
+  - `src/features/ar/SpatialARExperiment.tsx`：测试页上的实验入口和状态提示。
+  - `src/features/ar/webxrSpatialAdapter.ts`：WebXR / Three.js 适配器。
+  - `src/features/testing/TestScreen.tsx`：把实验入口接入测试页。
+- 本轮完成后需要实机测试：WebXR 支持检测、支持设备进入空间 AR、放置演示物体、不支持设备是否正确降级、原有相机识别测试是否仍正常。

@@ -60,6 +60,13 @@ describe("TestScreen", () => {
     expect(container.querySelector(".ar-test-overlay")).toBeNull();
   });
 
+  it("shows the WebXR spatial AR experiment entry without changing overlay testing", async () => {
+    render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
+
+    expect(await screen.findByText("空间 AR 实验")).toBeInTheDocument();
+    expect(screen.getByText("可以继续使用上面的相机叠加测试。")).toBeInTheDocument();
+  });
+
   it("shows the text output for a simulated detected state", () => {
     render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { playBuiltInAudio } from "../ar/audioCatalog";
 import { Model3DPreview } from "../ar/Model3DPreview";
+import { SpatialARExperiment } from "../ar/SpatialARExperiment";
 import { createScreenAnchorPlacement } from "../ar/screenAnchor";
 import type { RecognitionModel } from "../ml/classifierTypes";
 import type { Asset, BuiltInAudioId, StateBinding, Transform } from "../projects/projectTypes";
@@ -339,6 +340,8 @@ export function TestScreen(props: {
           {audioMessage}
         </p>
       )}
+
+      <SpatialARExperiment />
 
       <button className="secondary-button" onClick={props.onBackHome} type="button">
         返回首页
