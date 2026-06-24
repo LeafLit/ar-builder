@@ -11,6 +11,7 @@ import {
   MIN_RECOGNITION_SENSITIVITY
 } from "../projects/projectTypes";
 import { createCameraStateRecognizer } from "./cameraStateRecognizer";
+import { createColorMarkerRecognizer } from "./colorMarkerRecognizer";
 import {
   createInitialStableRecognitionState,
   updateStableRecognition,
@@ -39,6 +40,7 @@ type AudioStateBinding = StateBinding & {
 };
 
 type RecognitionPhase = "idle" | "starting" | "running" | "failed";
+type RecognitionInputMode = "camera-classifier" | "color-marker";
 
 const SENSITIVITY_STEP = 5;
 const AUDIO_PLAYBACK_BLOCKED_MESSAGE = "音效播放被浏览器阻止，请点一下页面后重试。";
@@ -46,6 +48,10 @@ const AUDIO_PLAYBACK_BLOCKED_MESSAGE = "音效播放被浏览器阻止，请点�
 type CameraRecognizerFactory = (
   video: HTMLVideoElement,
   model: RecognitionModel
+) => StateRecognizer;
+type ColorMarkerRecognizerFactory = (
+  video: HTMLVideoElement,
+  stateIds: string[]
 ) => StateRecognizer;
 
 export function TestScreen(props: {
@@ -55,6 +61,7 @@ export function TestScreen(props: {
   recognitionModel?: RecognitionModel;
   recognizer?: StateRecognizer;
   createCameraRecognizer?: CameraRecognizerFactory;
+  createColorMarkerRecognizer?: ColorMarkerRecognizerFactory;
   playAudio?: (audioId: BuiltInAudioId) => Promise<void> | void;
   vibrate?: (duration: number) => void;
   recognitionSensitivity?: number;
@@ -73,6 +80,8 @@ export function TestScreen(props: {
   const [localRecognitionSensitivity, setLocalRecognitionSensitivity] = useState(
     DEFAULT_RECOGNITION_SENSITIVITY
   );
+  const [recognitionInputMode, setRecognitionInputMode] =
+    useState<RecognitionInputMode>("camera-classifier");
   const [recognitionPhase, setRecognitionPhase] = useState<RecognitionPhase>("idle");
   const [stableRecognition, setStableRecognition] = useState<StableRecognitionState>(
     createInitialStableRecognitionState
@@ -178,8 +187,11 @@ export function TestScreen(props: {
     try {
       const recognizer = createActiveRecognizer({
         cameraRecognizerFactory: props.createCameraRecognizer,
+        colorMarkerRecognizerFactory: props.createColorMarkerRecognizer,
+        mode: recognitionInputMode,
         model: props.recognitionModel,
         recognizer: props.recognizer,
+        stateIds: states.map((state) => state.id),
         video: videoRef.current
       });
       const session = await recognizer.start((prediction) => {
@@ -273,6 +285,33 @@ export function TestScreen(props: {
           </button>
         ))}
       </div>
+
+      <fieldset className="input-mode-panel" disabled={recognitionStartingOrRunning}>
+        <legend>自动识别输入模式</legend>
+        <label>
+          <input
+            checked={recognitionInputMode === "camera-classifier"}
+            name="recognition-input-mode"
+            onChange={() => setRecognitionInputMode("camera-classifier")}
+            type="radio"
+          />
+          相机分类
+        </label>
+        <label>
+          <input
+            checked={recognitionInputMode === "color-marker"}
+            name="recognition-input-mode"
+            onChange={() => setRecognitionInputMode("color-marker")}
+            type="radio"
+          />
+          颜色标记
+        </label>
+        {recognitionInputMode === "color-marker" && (
+          <p className="muted">
+            红色对应第 1 个状态，绿色对应第 2 个状态，蓝色对应第 3 个状态。
+          </p>
+        )}
+      </fieldset>
 
       <div className="action-row">
         <button
@@ -391,12 +430,21 @@ function createRecognitionThreshold(sensitivity: number) {
 
 function createActiveRecognizer(input: {
   cameraRecognizerFactory?: CameraRecognizerFactory;
+  colorMarkerRecognizerFactory?: ColorMarkerRecognizerFactory;
+  mode: RecognitionInputMode;
   model?: RecognitionModel;
   recognizer?: StateRecognizer;
+  stateIds: string[];
   video: HTMLVideoElement | null;
 }) {
   if (input.recognizer) {
     return input.recognizer;
+  }
+
+  if (input.mode === "color-marker" && input.video) {
+    const factory = input.colorMarkerRecognizerFactory ?? createDefaultColorMarkerRecognizer;
+
+    return factory(input.video, input.stateIds);
   }
 
   if (input.model && input.video) {
@@ -413,6 +461,13 @@ function createDefaultCameraRecognizer(video: HTMLVideoElement, model: Recogniti
     video,
     classifier: model.classifier,
     embedder: model.embedder
+  });
+}
+
+function createDefaultColorMarkerRecognizer(video: HTMLVideoElement, stateIds: string[]) {
+  return createColorMarkerRecognizer({
+    stateIds,
+    video
   });
 }
 

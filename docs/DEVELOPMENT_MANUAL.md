@@ -322,3 +322,14 @@ type ARAdapter = {
 - 测试页本身已经有一个主状态播报 `role="status"`，WebXR 实验卡片不要再额外使用 `role="status"`，避免自动化测试和读屏状态互相干扰。
 - WebXR 能力检测必须允许失败：`navigator.xr` 不存在、`isSessionSupported` 抛错、`requestSession` 不存在时，都要降级为“当前设备暂不支持 WebXR 空间 AR”。
 - v1 只验证能不能启动 WebXR 会话、能不能渲染和放置一个简单物体；暂时不接入训练识别结果、不保存空间锚点、不承诺平面检测。
+
+## 2026-06-24 补充：颜色标记识别实现说明
+
+- 颜色标记识别是测试页里的稳定输入实验，不替代训练模型识别。
+- `src/features/testing/colorMarkerRecognizer.ts` 包含两层：
+  - `detectColorMarker(imageData, stateIds)`：纯函数，只看像素平均颜色，便于单元测试。
+  - `createColorMarkerRecognizer(...)`：负责启动相机、定时抓帧、调用纯函数并输出状态预测。
+- `TestScreen` 通过 `recognitionInputMode` 在“相机分类”和“颜色标记”之间切换。
+- 颜色标记模式不要求已经训练模型，但仍然需要摄像头权限。
+- v1 固定映射红 / 绿 / 蓝到前 3 个状态，暂不做用户自定义颜色映射。
+- 如果后续加入二维码或图片标记，也建议继续实现为独立 `StateRecognizer`，再从 `TestScreen` 统一选择输入模式。

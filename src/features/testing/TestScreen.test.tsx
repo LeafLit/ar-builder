@@ -820,6 +820,45 @@ describe("TestScreen", () => {
     expect(onRecognitionSensitivityChange).toHaveBeenCalledWith(100);
   });
 
+  it("lets the user switch automatic recognition to color marker mode", () => {
+    render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
+
+    expect(screen.getByRole("radio", { name: "相机分类" })).toBeChecked();
+
+    fireEvent.click(screen.getByRole("radio", { name: "颜色标记" }));
+
+    expect(screen.getByRole("radio", { name: "颜色标记" })).toBeChecked();
+    expect(screen.getByText("红色对应第 1 个状态，绿色对应第 2 个状态，蓝色对应第 3 个状态。")).toBeInTheDocument();
+  });
+
+  it("creates a color marker recognizer when color marker mode is selected", async () => {
+    const stop = vi.fn();
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async () => ({ stop }))
+    };
+    const createColorRecognizer = vi.fn(() => recognizer);
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        createColorMarkerRecognizer={createColorRecognizer}
+        onBackHome={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "颜色标记" }));
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(createColorRecognizer).toHaveBeenCalledWith(expect.any(HTMLVideoElement), [
+        "state_a",
+        "state_b"
+      ]);
+    });
+    expect(recognizer.start).toHaveBeenCalledTimes(1);
+  });
+
   it("creates a camera recognizer when a trained model is available", async () => {
     const stop = vi.fn();
     const recognizer: StateRecognizer = {

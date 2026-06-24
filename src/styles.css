@@ -616,6 +616,46 @@ textarea {
   accent-color: #0f766e;
 }
 
+.input-mode-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.input-mode-panel legend {
+  grid-column: 1 / -1;
+  padding: 0 4px;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.input-mode-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #0f172a;
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.input-mode-panel input {
+  accent-color: #0f766e;
+}
+
+.input-mode-panel .muted {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .counter-panel {
   display: grid;
   gap: 10px;
