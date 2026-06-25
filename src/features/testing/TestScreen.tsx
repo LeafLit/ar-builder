@@ -12,6 +12,7 @@ import {
 } from "../projects/projectTypes";
 import { createCameraStateRecognizer } from "./cameraStateRecognizer";
 import { createColorMarkerRecognizer } from "./colorMarkerRecognizer";
+import { createQrMarkerRecognizer } from "./qrMarkerRecognizer";
 import {
   createInitialStableRecognitionState,
   updateStableRecognition,
@@ -40,7 +41,7 @@ type AudioStateBinding = StateBinding & {
 };
 
 type RecognitionPhase = "idle" | "starting" | "running" | "failed";
-type RecognitionInputMode = "camera-classifier" | "color-marker";
+type RecognitionInputMode = "camera-classifier" | "color-marker" | "qr-marker";
 
 const SENSITIVITY_STEP = 5;
 const AUDIO_PLAYBACK_BLOCKED_MESSAGE = "音效播放被浏览器阻止，请点一下页面后重试。";
@@ -53,6 +54,10 @@ type ColorMarkerRecognizerFactory = (
   video: HTMLVideoElement,
   stateIds: string[]
 ) => StateRecognizer;
+type QrMarkerRecognizerFactory = (
+  video: HTMLVideoElement,
+  stateIds: string[]
+) => StateRecognizer;
 
 export function TestScreen(props: {
   assets: Asset[];
@@ -62,6 +67,7 @@ export function TestScreen(props: {
   recognizer?: StateRecognizer;
   createCameraRecognizer?: CameraRecognizerFactory;
   createColorMarkerRecognizer?: ColorMarkerRecognizerFactory;
+  createQrMarkerRecognizer?: QrMarkerRecognizerFactory;
   playAudio?: (audioId: BuiltInAudioId) => Promise<void> | void;
   vibrate?: (duration: number) => void;
   recognitionSensitivity?: number;
@@ -188,6 +194,7 @@ export function TestScreen(props: {
       const recognizer = createActiveRecognizer({
         cameraRecognizerFactory: props.createCameraRecognizer,
         colorMarkerRecognizerFactory: props.createColorMarkerRecognizer,
+        qrMarkerRecognizerFactory: props.createQrMarkerRecognizer,
         mode: recognitionInputMode,
         model: props.recognitionModel,
         recognizer: props.recognizer,
@@ -306,9 +313,23 @@ export function TestScreen(props: {
           />
           颜色标记
         </label>
+        <label>
+          <input
+            checked={recognitionInputMode === "qr-marker"}
+            name="recognition-input-mode"
+            onChange={() => setRecognitionInputMode("qr-marker")}
+            type="radio"
+          />
+          二维码标记
+        </label>
         {recognitionInputMode === "color-marker" && (
           <p className="muted">
             红色对应第 1 个状态，绿色对应第 2 个状态，蓝色对应第 3 个状态。
+          </p>
+        )}
+        {recognitionInputMode === "qr-marker" && (
+          <p className="muted">
+            二维码内容 ARBUILDER:1 / 2 / 3 对应前 3 个状态。
           </p>
         )}
       </fieldset>
@@ -431,6 +452,7 @@ function createRecognitionThreshold(sensitivity: number) {
 function createActiveRecognizer(input: {
   cameraRecognizerFactory?: CameraRecognizerFactory;
   colorMarkerRecognizerFactory?: ColorMarkerRecognizerFactory;
+  qrMarkerRecognizerFactory?: QrMarkerRecognizerFactory;
   mode: RecognitionInputMode;
   model?: RecognitionModel;
   recognizer?: StateRecognizer;
@@ -443,6 +465,12 @@ function createActiveRecognizer(input: {
 
   if (input.mode === "color-marker" && input.video) {
     const factory = input.colorMarkerRecognizerFactory ?? createDefaultColorMarkerRecognizer;
+
+    return factory(input.video, input.stateIds);
+  }
+
+  if (input.mode === "qr-marker" && input.video) {
+    const factory = input.qrMarkerRecognizerFactory ?? createDefaultQrMarkerRecognizer;
 
     return factory(input.video, input.stateIds);
   }
@@ -466,6 +494,13 @@ function createDefaultCameraRecognizer(video: HTMLVideoElement, model: Recogniti
 
 function createDefaultColorMarkerRecognizer(video: HTMLVideoElement, stateIds: string[]) {
   return createColorMarkerRecognizer({
+    stateIds,
+    video
+  });
+}
+
+function createDefaultQrMarkerRecognizer(video: HTMLVideoElement, stateIds: string[]) {
+  return createQrMarkerRecognizer({
     stateIds,
     video
   });

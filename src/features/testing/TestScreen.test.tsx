@@ -859,6 +859,43 @@ describe("TestScreen", () => {
     expect(recognizer.start).toHaveBeenCalledTimes(1);
   });
 
+  it("lets the user switch automatic recognition to QR marker mode", () => {
+    render(<TestScreen assets={assets} bindings={bindings} onBackHome={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "二维码标记" }));
+
+    expect(screen.getByRole("radio", { name: "二维码标记" })).toBeChecked();
+    expect(screen.getByText("二维码内容 ARBUILDER:1 / 2 / 3 对应前 3 个状态。")).toBeInTheDocument();
+  });
+
+  it("creates a QR marker recognizer when QR marker mode is selected", async () => {
+    const stop = vi.fn();
+    const recognizer: StateRecognizer = {
+      start: vi.fn(async () => ({ stop }))
+    };
+    const createQrRecognizer = vi.fn(() => recognizer);
+
+    render(
+      <TestScreen
+        assets={assets}
+        bindings={bindings}
+        createQrMarkerRecognizer={createQrRecognizer}
+        onBackHome={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "二维码标记" }));
+    fireEvent.click(screen.getByRole("button", { name: "启动自动识别" }));
+
+    await waitFor(() => {
+      expect(createQrRecognizer).toHaveBeenCalledWith(expect.any(HTMLVideoElement), [
+        "state_a",
+        "state_b"
+      ]);
+    });
+    expect(recognizer.start).toHaveBeenCalledTimes(1);
+  });
+
   it("creates a camera recognizer when a trained model is available", async () => {
     const stop = vi.fn();
     const recognizer: StateRecognizer = {
